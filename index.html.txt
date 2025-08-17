@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minha Plataforma Digital</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f0f2f5; text-align: center; padding: 50px; }
+        h1 { color: #333; }
+        p { color: #555; }
+        a.button { display: inline-block; margin-top: 20px; padding: 12px 24px; background: #4CAF50; color: #fff; text-decoration: none; border-radius: 5px; }
+        a.button:hover { background: #45a049; }
+    </style>
+</head>
+<body>
+    <h1>Bem-vindo à Minha Plataforma Digital</h1>
+    <p>Esta é a primeira página da sua plataforma. Em breve você poderá logar, acessar dados e interagir com IA!</p>
+    <a href="#" class="button">Entrar</a>
+</body>
+</html>
