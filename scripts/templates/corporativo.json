@@ -1,0 +1,28 @@
+{
+  "id": "corporativo",
+  "nome": "Treinamento Corporativo",
+  "descricao": "Avaliações de treinamento com resultado binário aprovado/reprovado.",
+  "versao": 1,
+  "config": {
+    "versao": 1,
+    "idioma": "pt-BR",
+    "disciplinas": [
+      { "id": "compliance", "nome": "Compliance", "areas": [] },
+      { "id": "seguranca", "nome": "Segurança do trabalho", "areas": [] },
+      { "id": "produto", "nome": "Produto", "areas": [] }
+    ],
+    "escalaPontuacao": {
+      "max": 100,
+      "conceitos": [
+        { "id": "reprovado", "nome": "Reprovado", "minPct": 0, "maxPct": 69, "cor": "#e53935" },
+        { "id": "aprovado", "nome": "Aprovado", "minPct": 70, "maxPct": 100, "cor": "#2e7d32" }
+      ]
+    },
+    "camposCustomUsuario": [
+      { "id": "departamento", "label": "Departamento", "tipo": "texto", "obrigatorio": true },
+      { "id": "matricula", "label": "Matrícula", "tipo": "texto", "obrigatorio": true }
+    ],
+    "proctoringPadrao": { "trocaAbaMax": 0, "tempoMinSeg": 0, "bloqueioMultiplaSessao": false },
+    "gamificacao": { "ativa": false, "badges": [] }
+  }
+}

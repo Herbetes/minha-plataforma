@@ -1,0 +1,48 @@
+{
+  "id": "obm",
+  "nome": "Olimpíadas de Matemática (OBM)",
+  "descricao": "Template inspirado na Olimpíada Brasileira de Matemática, com níveis 1/2/3, áreas de teoria dos números, álgebra, geometria e combinatória.",
+  "versao": 1,
+  "config": {
+    "versao": 1,
+    "idioma": "pt-BR",
+    "disciplinas": [
+      {
+        "id": "matematica",
+        "nome": "Matemática",
+        "areas": [
+          { "id": "teoria_numeros", "nome": "Teoria dos Números" },
+          { "id": "algebra", "nome": "Álgebra" },
+          { "id": "geometria", "nome": "Geometria" },
+          { "id": "combinatoria", "nome": "Combinatória" },
+          { "id": "logica", "nome": "Lógica e problemas" }
+        ]
+      }
+    ],
+    "escalaPontuacao": {
+      "max": 100,
+      "conceitos": [
+        { "id": "bronze", "nome": "Bronze", "minPct": 40, "maxPct": 59, "cor": "#cd7f32" },
+        { "id": "prata", "nome": "Prata", "minPct": 60, "maxPct": 79, "cor": "#c0c0c0" },
+        { "id": "ouro", "nome": "Ouro", "minPct": 80, "maxPct": 94, "cor": "#ffd700" },
+        { "id": "hors_concours", "nome": "Hors-concours", "minPct": 95, "maxPct": 100, "cor": "#8a2be2" }
+      ]
+    },
+    "camposCustomUsuario": [
+      { "id": "nivel_obm", "label": "Nível OBM", "tipo": "selecao", "obrigatorio": true, "opcoes": ["Nível 1", "Nível 2", "Nível 3"] },
+      { "id": "escola", "label": "Escola", "tipo": "texto", "obrigatorio": false }
+    ],
+    "proctoringPadrao": {
+      "trocaAbaMax": 2,
+      "tempoMinSeg": 600,
+      "bloqueioMultiplaSessao": true
+    },
+    "gamificacao": {
+      "ativa": true,
+      "badges": [
+        { "id": "primeiro_ouro", "nome": "Primeiro Ouro", "descricao": "Conquiste sua primeira medalha de ouro.", "criterio": "conceito=ouro e primeira_vez=true" },
+        { "id": "maratonista", "nome": "Maratonista", "descricao": "Resolva 50 problemas de combinatória.", "criterio": "areaId=combinatoria e acertos>=50" }
+      ]
+    }
+  }
+}

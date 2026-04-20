@@ -1,0 +1,28 @@
+{
+  "id": "enem",
+  "nome": "Ensino Médio / ENEM",
+  "descricao": "Áreas do conhecimento do ENEM com escala 0–1000 e TRI aproximada por conceito.",
+  "versao": 1,
+  "config": {
+    "versao": 1,
+    "idioma": "pt-BR",
+    "disciplinas": [
+      { "id": "linguagens", "nome": "Linguagens, códigos e suas tecnologias", "areas": [] },
+      { "id": "matematica", "nome": "Matemática e suas tecnologias", "areas": [] },
+      { "id": "ciencias_humanas", "nome": "Ciências humanas e suas tecnologias", "areas": [] },
+      { "id": "ciencias_natureza", "nome": "Ciências da natureza e suas tecnologias", "areas": [] }
+    ],
+    "escalaPontuacao": {
+      "max": 1000,
+      "conceitos": [
+        { "id": "insuficiente", "nome": "Insuficiente", "minPct": 0, "maxPct": 39, "cor": "#e53935" },
+        { "id": "basico", "nome": "Básico", "minPct": 40, "maxPct": 59, "cor": "#fb8c00" },
+        { "id": "proficiente", "nome": "Proficiente", "minPct": 60, "maxPct": 79, "cor": "#43a047" },
+        { "id": "avancado", "nome": "Avançado", "minPct": 80, "maxPct": 100, "cor": "#1e88e5" }
+      ]
+    },
+    "camposCustomUsuario": [],
+    "proctoringPadrao": { "trocaAbaMax": 3, "tempoMinSeg": 300, "bloqueioMultiplaSessao": true },
+    "gamificacao": { "ativa": false, "badges": [] }
+  }
+}

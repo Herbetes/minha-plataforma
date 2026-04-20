@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --cor-primaria: #00796b;
+  --cor-primaria-contraste: #ffffff;
+  --cor-secundaria: #ff6f00;
+  --cor-secundaria-contraste: #ffffff;
+}
+
+/* Acessibilidade: foco visível forte em todos os controles interativos. */
+*:focus-visible {
+  outline: 3px solid #005f56;
+  outline-offset: 2px;
+}

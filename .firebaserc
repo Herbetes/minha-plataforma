@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "default": "minha-plataforma-dev",
+    "staging": "minha-plataforma-staging",
+    "production": "minha-plataforma-prod"
+  }
+}

@@ -1,0 +1,188 @@
+rules_version = '2';
+
+// Regras de segurança multi-tenant.
+// Princípios:
+//  - Bloqueio por padrão (match /{document=**} no final, sem permissões).
+//  - Todo acesso valida request.auth.token.orgId == orgId do documento.
+//  - Papel (role) lido do custom claim. Jamais confiar em dados do próprio documento do usuário para decidir acesso.
+//  - Coleção auditoria/ é append-only. Nenhum papel pode update/delete.
+//  - Testes em firebase/tests/rules.test.ts cobrem isolamento cross-org e cross-role.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- helpers ----------
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    function claim(campo) {
+      return request.auth.token[campo];
+    }
+
+    function daOrg(orgId) {
+      return autenticado() && claim('orgId') == orgId;
+    }
+
+    function papelEh(papel) {
+      return autenticado() && claim('role') == papel;
+    }
+
+    function papelEmOrg(orgId, papeis) {
+      return daOrg(orgId) && claim('role') in papeis;
+    }
+
+    function usuarioAtual() {
+      return request.auth.uid;
+    }
+
+    function dadosImutaveis(campos) {
+      return !(campos.hasAny(request.resource.data.diff(resource.data).affectedKeys()));
+    }
+
+    // ---------- coleção global de templates (read-only ao cliente) ----------
+    match /templates/{templateId} {
+      allow read: if autenticado();
+      allow write: if false; // manutenção via backend/admin CLI
+    }
+
+    // ---------- flags globais (kill-switch) ----------
+    match /flagsGlobais/{flagId} {
+      allow read: if autenticado();
+      allow write: if false; // somente Cloud Functions com Admin SDK
+    }
+
+    // ---------- cache de LLM é server-only ----------
+    match /llmCache/{hash} {
+      allow read, write: if false;
+    }
+
+    // ---------- organização ----------
+    match /organizacoes/{orgId} {
+
+      // Leitura da org: qualquer membro autenticado da org.
+      allow read: if daOrg(orgId);
+
+      // Somente admin pode editar o documento raiz da org.
+      // Campos de consumo/cap NUNCA podem ser escritos pelo cliente — só pelo backend.
+      allow update: if papelEmOrg(orgId, ['admin'])
+                    && !request.resource.data.diff(resource.data).affectedKeys()
+                        .hasAny(['capsCustoIAMesUSD', 'consumoAcumuladoMesUSD', 'statusCap', 'plano']);
+
+      allow create, delete: if false; // criadas via Cloud Function de onboarding
+
+      // --------- subcoleções ---------
+
+      match /usuarios/{uid} {
+        // Membro lê o próprio doc; coordenador/admin lê todos da org.
+        allow read: if daOrg(orgId) && (
+          usuarioAtual() == uid ||
+          papelEmOrg(orgId, ['coordenador', 'admin'])
+        );
+
+        // Usuário pode atualizar APENAS campos de perfil próprios.
+        // Role/orgId/vínculos NUNCA podem ser escritos pelo cliente — sempre via Cloud Function com claims.
+        allow update: if daOrg(orgId) && usuarioAtual() == uid
+                      && !request.resource.data.diff(resource.data).affectedKeys()
+                          .hasAny(['perfil', 'orgId', 'turmaIds', 'role', 'claims', 'email']);
+
+        // Admin da org pode editar metadados de usuários (exceto claims/role — Cloud Function).
+        allow update: if papelEmOrg(orgId, ['admin'])
+                      && !request.resource.data.diff(resource.data).affectedKeys()
+                          .hasAny(['perfil', 'role', 'claims']);
+
+        allow create, delete: if false; // via Cloud Functions
+      }
+
+      match /turmas/{turmaId} {
+        allow read: if daOrg(orgId) && (
+          papelEmOrg(orgId, ['coordenador', 'admin']) ||
+          (papelEh('professor') && usuarioAtual() == resource.data.professorId) ||
+          (papelEh('aluno') && usuarioAtual() in resource.data.alunosIds)
+        );
+        allow write: if papelEmOrg(orgId, ['coordenador', 'admin']);
+      }
+
+      match /disciplinas/{discId} {
+        allow read: if daOrg(orgId);
+        allow write: if papelEmOrg(orgId, ['coordenador', 'admin']);
+      }
+
+      match /questoes/{questaoId} {
+        // Alunos NÃO leem banco direto — questões são entregues por simulado.
+        allow read: if papelEmOrg(orgId, ['professor', 'coordenador', 'admin', 'corretor']);
+        allow write: if papelEmOrg(orgId, ['coordenador', 'admin']);
+      }
+
+      match /simulados/{simId} {
+        allow read: if daOrg(orgId) && (
+          papelEmOrg(orgId, ['coordenador', 'admin', 'professor']) ||
+          (papelEh('aluno') && resource.data.status == 'publicado')
+        );
+        allow write: if papelEmOrg(orgId, ['coordenador', 'admin']);
+      }
+
+      match /resultados/{resId} {
+        // Aluno só lê o próprio resultado.
+        allow read: if daOrg(orgId) && (
+          (papelEh('aluno') && usuarioAtual() == resource.data.alunoId) ||
+          papelEmOrg(orgId, ['professor', 'coordenador', 'admin', 'corretor']) ||
+          (papelEh('responsavel') &&
+            exists(/databases/$(database)/documents/organizacoes/$(orgId)/vinculos/$(usuarioAtual())) &&
+            resource.data.alunoId in get(/databases/$(database)/documents/organizacoes/$(orgId)/vinculos/$(usuarioAtual())).data.dependentes)
+        );
+
+        // Aluno cria seu próprio resultado ao entregar simulado. Demais escritas via Cloud Function.
+        allow create: if papelEh('aluno') && daOrg(orgId)
+                      && request.resource.data.alunoId == usuarioAtual();
+        allow update: if papelEmOrg(orgId, ['professor', 'coordenador', 'admin', 'corretor']);
+        allow delete: if false;
+      }
+
+      match /insights/{insId} {
+        allow read: if daOrg(orgId) && (
+          (papelEh('aluno') && resource.data.escopo == 'aluno' && resource.data.refId == usuarioAtual()) ||
+          papelEmOrg(orgId, ['professor', 'coordenador', 'admin'])
+        );
+        allow write: if false; // escrita apenas via Cloud Function
+      }
+
+      // Auditoria: append-only. Nenhum update/delete, nem por admin.
+      match /auditoria/{logId} {
+        allow read: if papelEmOrg(orgId, ['admin']);
+        allow create: if false; // escrita via Cloud Function com Admin SDK
+        allow update, delete: if false;
+      }
+
+      match /configHistorico/{versao} {
+        allow read: if papelEmOrg(orgId, ['admin', 'coordenador']);
+        allow write: if false; // via Cloud Function
+      }
+
+      match /featureFlags/{flagId} {
+        allow read: if daOrg(orgId);
+        allow write: if papelEmOrg(orgId, ['admin']);
+      }
+
+      match /notificacoes/{notId} {
+        allow read: if daOrg(orgId) && (
+          request.auth.uid == resource.data.destinoUid ||
+          papelEmOrg(orgId, ['coordenador', 'admin'])
+        );
+        allow write: if false; // via Cloud Function
+      }
+
+      match /vinculos/{uid} {
+        allow read: if daOrg(orgId) && (usuarioAtual() == uid || papelEmOrg(orgId, ['admin', 'coordenador']));
+        allow write: if papelEmOrg(orgId, ['admin', 'coordenador']);
+      }
+
+      // Qualquer subcoleção não declarada cai no bloqueio default abaixo.
+    }
+
+    // ---------- default deny ----------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

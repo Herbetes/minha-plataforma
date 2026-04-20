@@ -1,0 +1,18 @@
+{
+  "name": "@minha-plataforma/config",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    "./eslint": "./eslint-preset.cjs",
+    "./tailwind": "./tailwind-preset.cjs",
+    "./tsconfig": "./tsconfig.base.json"
+  },
+  "scripts": {
+    "lint": "echo 'nothing to lint'",
+    "typecheck": "echo 'nothing to typecheck'",
+    "test": "echo 'no tests'",
+    "build": "echo 'nothing to build'"
+  }
+}

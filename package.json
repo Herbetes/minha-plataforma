@@ -1,0 +1,29 @@
+{
+  "name": "minha-plataforma",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Plataforma SaaS white-label de simulados educacionais com IA (multi-tenant)",
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20.10.0"
+  },
+  "scripts": {
+    "build": "pnpm -r --filter \"./apps/*\" --filter \"./packages/*\" run build",
+    "lint": "pnpm -r run lint",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "pnpm -r run test",
+    "test:rules": "pnpm --filter ./firebase run test",
+    "dev": "pnpm --filter ./apps/web run dev",
+    "emulators": "firebase emulators:start --only auth,firestore,functions,storage",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md}\"",
+    "schema:generate": "tsx scripts/generate-json-schema.ts",
+    "seed": "tsx scripts/seed.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "prettier": "^3.3.3",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4"
+  }
+}
