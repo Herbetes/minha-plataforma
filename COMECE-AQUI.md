@@ -95,6 +95,17 @@ Guarde como: **CHAVE 1**
    engrenagem) → **API Keys** (ou **API**). Copie para o bloco de notas:
 
    - **Project URL** — algo como `https://abcdefgh.supabase.co` → **CHAVE 2**
+
+     > **Não achou o Project URL?** Não precisa procurar: dá para montar.
+     > Olhe a barra de endereço do navegador, que está assim:
+     > `https://supabase.com/dashboard/project/abcdefgh`
+     > O pedaço depois de `/project/` é o código do seu projeto, e a CHAVE 2 é
+     > esse código entre `https://` e `.supabase.co` — ou seja,
+     > `https://abcdefgh.supabase.co`.
+     > Repare: é `.co`, não `.com`, e não tem barra no final.
+     >
+     > Dependendo da versão do painel, o campo pronto fica em
+     > **Data API** (Project URL) ou em **General** (Reference ID).
    - A chave **pública** → **CHAVE 3**. Dependendo de quando sua conta foi
      criada, ela aparece com um destes dois nomes:
      - `anon` / `public` — um texto longo começando com `eyJ`
