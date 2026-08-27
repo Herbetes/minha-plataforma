@@ -63,11 +63,94 @@ que chegar na caixa de entrada.
 
 ---
 
+## Como verificar que está tudo funcionando
+
+A verificação tem três níveis. Faça na ordem — cada um só faz sentido depois do anterior.
+
+### Nível 1 — o código está são (não precisa de conta nenhuma)
+
+```bash
+npm install
+npm run verificar
+```
+
+Roda typecheck, os testes de unidade e o build de produção. Esperado:
+
+```
+Test Files  1 passed (1)
+     Tests  13 passed (13)
+✓ Compiled successfully
+```
+
+Se isso passa, o código compila e a lógica está correta. É exatamente o que o
+GitHub Actions roda a cada push — a aba **Actions** do repositório mostra o mesmo
+resultado, com um check verde no commit.
+
+### Nível 2 — as suas credenciais funcionam
+
+Depois de preencher o `.env.local`:
+
+```bash
+npm run diagnostico
+```
+
+Faz uma chamada real (e minúscula, fração de centavo) à Anthropic e uma consulta
+real ao Supabase, e diz exatamente o que está errado:
+
+```
+Anthropic
+  OK   A chave funciona e o modelo respondeu
+       modelo servido: claude-opus-5 · resposta: "ok" · tokens: 12 entrada / 3 saída
+
+Supabase
+  OK   Tabela "conversations" existe e o RLS está barrando acesso anônimo
+  OK   Tabela "messages" existe e o RLS está barrando acesso anônimo
+
+Ambiente pronto. Rode npm run dev e faça o login.
+```
+
+Ele distingue as falhas: chave rejeitada (401), modelo inexistente, teto de gasto
+atingido (429), tabela que não existe (`schema.sql` não foi executado), URL errada
+e — o mais importante — **RLS desligado**. Se a consulta anônima devolver alguma
+linha, o script acusa: sem RLS, a chave `anon`, que é pública, lê os dados de todos.
+
+### Nível 3 — o caminho completo, no navegador
+
+Com `npm run dev` rodando, confira estes seis pontos:
+
+| # | O que fazer | O que deve acontecer |
+|---|---|---|
+| 1 | Abrir `http://localhost:3000/app` sem estar logado | Redireciona para `/login` |
+| 2 | Informar seu e-mail e enviar | Tela de "Link enviado" e o e-mail chega em segundos |
+| 3 | Clicar no link do e-mail | Entra direto em `/app`, com seu e-mail no topo |
+| 4 | Mandar uma pergunta | A resposta aparece **palavra por palavra**, não de uma vez — é o streaming funcionando |
+| 5 | Recarregar a página (F5) | A conversa continua lá. **Este é o teste que define o Projeto 0 como pronto** |
+| 6 | Clicar em Sair e tentar `/app` de novo | Volta para `/login` |
+
+Para conferir que os dados estão mesmo no banco: Supabase → **Table Editor** →
+`messages`. Você vê suas mensagens, com `model`, `input_tokens` e `output_tokens`
+preenchidos nas respostas do assistente.
+
+**Um teste que vale fazer uma vez**: abra a mesma URL numa aba anônima e faça login
+com um segundo e-mail. A conversa do primeiro usuário não pode aparecer. É o RLS
+sendo provado na prática.
+
+### E em produção?
+
+Os mesmos seis passos do nível 3, na URL da Vercel. Se o nível 3 passou local e
+falha em produção, a causa é quase sempre uma destas duas: faltou cadastrar as
+variáveis de ambiente na Vercel (e refazer o deploy), ou faltou adicionar a URL de
+produção nas *Redirect URLs* do Supabase.
+
+---
+
 ## Comandos
 
 | Comando | O que faz |
 |---|---|
 | `npm run dev` | Sobe o servidor local em `localhost:3000` |
+| `npm run verificar` | Typecheck + testes + build (o mesmo que o CI roda) |
+| `npm run diagnostico` | Testa suas credenciais de verdade, contra Anthropic e Supabase |
 | `npm run build` | Build de produção — roda igual ao da Vercel |
 | `npm run typecheck` | Confere os tipos sem gerar arquivo |
 | `npm test` | Roda os testes de unidade |
