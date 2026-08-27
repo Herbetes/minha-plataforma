@@ -241,6 +241,8 @@ Vá pela mensagem que apareceu na tela:
 | No SQL Editor: `syntax error at or near "✕Merlin"` (ou outro nome de extensão) | Uma extensão de IA do navegador sujou a cópia | Limpe a caixa (Ctrl+A, Delete) e copie de novo pelo botão **Copy raw file**, nunca com Ctrl+A |
 | No SQL Editor: erro apontando uma linha maior que 84 | Veio texto a mais colado no fim | Ctrl+End na caixa: a última linha tem que ser `for each row execute function public.touch_conversation();`. Apague o que vier depois |
 | A tela fica branca | O deploy falhou | Vercel → Deployments → clique no último → aba Logs |
+| Build falha com `No Output Directory named "public" found` | O projeto na Vercel está configurado como site estático, não como Next.js | Settings → Build and Deployment → **Framework Preset: Next.js**, e desligue o override de **Output Directory**. Depois, Redeploy |
+| O site publicado é a versão antiga | A Vercel está publicando um commit velho | Deployments → veja o commit do topo. Se não for o mais recente da `main`, crie um deploy novo apontando para `main` |
 
 **Em qualquer caso, me traga a mensagem exata que apareceu.** Com o texto do erro
 eu resolvo em um passo; sem ele, viramos os dois adivinhos.
