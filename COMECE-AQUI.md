@@ -236,6 +236,20 @@ Vá pela mensagem que apareceu na tela:
 | "Variável de ambiente ausente: ..." | Faltou uma chave na Vercel, ou o nome saiu com erro de digitação | Vercel → Settings → Environment Variables. **Depois de corrigir, tem que fazer um deploy novo**: aba Deployments → nos três pontinhos do último → Redeploy |
 | O link do e-mail dá "link inválido" | Passo 4 não foi feito, ou o endereço saiu com erro | Confira as Redirect URLs no Supabase. Tem que terminar em `/auth/callback` |
 | O e-mail não chega | Quase sempre é caixa de spam | Olhe o spam. Se não estiver, veja Supabase → Authentication → Logs |
+| No login: `email rate limit exceeded` | O e-mail embutido do Supabase manda pouquíssimas mensagens por hora, e os testes de login gastaram a cota | Passa sozinho em cerca de 1 hora. **Você não precisa esperar para testar**: um aparelho onde você já entrou continua logado — a sessão fica salva ali. Para resolver de vez, veja SMTP abaixo |
+
+### O e-mail embutido não serve para produção
+
+O serviço de e-mail que vem ligado no Supabase existe só para testes, e é limitado a
+um punhado de mensagens por hora — a própria Supabase avisa isso. Assim que a
+plataforma passar a ter mais de um usuário, o login vai falhar para as pessoas.
+
+O conserto é apontar o Supabase para um serviço de envio próprio, em
+**Authentication → Emails → SMTP Settings**. O **Resend** resolve no plano gratuito
+(3.000 e-mails por mês) e a configuração é colar uma chave.
+
+Vale fazer sem pressa: o Resend também é o serviço que o **Projeto 3 (Radar)** usa
+para mandar o e-mail semanal, então essa peça seria montada de qualquer forma.
 | No chat aparece "[Erro ao falar com a IA...]" | A CHAVE 1 está errada, ou acabaram os créditos | Confira o saldo em console.anthropic.com → Billing |
 | Login funciona mas a conversa some no F5 | O `schema.sql` não rodou, ou rodou com erro | Refaça o passo 2.4 e veja se a mensagem foi verde |
 | No SQL Editor: `syntax error at or near "✕Merlin"` (ou outro nome de extensão) | Uma extensão de IA do navegador sujou a cópia | Limpe a caixa (Ctrl+A, Delete) e copie de novo pelo botão **Copy raw file**, nunca com Ctrl+A |
