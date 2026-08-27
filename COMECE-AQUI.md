@@ -91,7 +91,24 @@ Guarde como: **CHAVE 1**
    Isso é sucesso — "nenhuma linha retornada" é o esperado, você criou tabelas
    vazias, não consultou dados.
 
-5. **Pegar as duas chaves.** Menu da esquerda → **Project Settings** (ícone de
+5. **Pegar as duas chaves.**
+
+   **O jeito mais rápido — botão `Connect`.** No topo do painel, perto do nome do
+   projeto, tem um botão **Connect**. Clique nele e escolha a aba
+   **App Frameworks**. Aparece um bloco pronto assim:
+
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=https://abcdefgh.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...
+   ```
+
+   São as duas chaves de uma vez, já com os nomes exatos que a Vercel espera.
+   O que vem depois do `=` em cada linha é o valor. **Se conseguiu por aqui,
+   pule o resto deste passo.**
+
+   ---
+
+   **Se não achar o botão Connect**, vá pelo menu: **Project Settings** (ícone de
    engrenagem) → **API Keys** (ou **API**). Copie para o bloco de notas:
 
    - **Project URL** — algo como `https://abcdefgh.supabase.co` → **CHAVE 2**
@@ -112,6 +129,10 @@ Guarde como: **CHAVE 1**
      - `publishable` — começando com `sb_publishable_`
 
      Qualquer um dos dois serve. O que importa é que seja **a pública**.
+
+     Dois sinais para não errar: a chave pública fica **visível na tela**, sem
+     precisar clicar em nada; a secreta costuma estar **escondida atrás de um
+     botão `Reveal` / `Show`**. Se você precisou revelar, é a errada.
 
    > ### Cuidado: nessa mesma tela tem uma chave que você NÃO deve usar
    >
