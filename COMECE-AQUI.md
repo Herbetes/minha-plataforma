@@ -64,8 +64,15 @@ Guarde como: **CHAVE 1**
 4. **Criar as tabelas.** No menu da esquerda, clique em **SQL Editor** →
    **New query**. Você vai ver uma caixa de texto grande e vazia.
 
-   Agora abra, noutra aba, o arquivo `supabase/schema.sql` deste repositório no
-   GitHub. Clique no botão de copiar (ou selecione tudo e copie).
+   Agora abra **esta página** noutra aba do navegador:
+
+   ```
+   https://raw.githubusercontent.com/Herbetes/minha-plataforma/main/supabase/schema.sql
+   ```
+
+   Vai aparecer só texto puro, sem enfeite. Clique em qualquer lugar do texto e
+   aperte **Ctrl+A** (seleciona tudo) e depois **Ctrl+C** (copia).
+   No Mac é **Cmd+A** e **Cmd+C**.
 
    Volte ao Supabase, **cole tudo** na caixa e clique em **Run**.
 
@@ -74,13 +81,31 @@ Guarde como: **CHAVE 1**
    vazias, não consultou dados.
 
 5. **Pegar as duas chaves.** Menu da esquerda → **Project Settings** (ícone de
-   engrenagem) → **API**. Copie para o bloco de notas:
-   - **Project URL** — algo como `https://abcdefgh.supabase.co` → **CHAVE 2**
-   - **anon public** — um texto longo começando com `eyJ` → **CHAVE 3**
+   engrenagem) → **API Keys** (ou **API**). Copie para o bloco de notas:
 
-   > Essa terceira é pública de propósito, pode ficar tranquilo. Quem protege
-   > seus dados é uma regra dentro do banco (chamada RLS) que o `schema.sql`
-   > acabou de ligar: cada pessoa só enxerga as próprias conversas.
+   - **Project URL** — algo como `https://abcdefgh.supabase.co` → **CHAVE 2**
+   - A chave **pública** → **CHAVE 3**. Dependendo de quando sua conta foi
+     criada, ela aparece com um destes dois nomes:
+     - `anon` / `public` — um texto longo começando com `eyJ`
+     - `publishable` — começando com `sb_publishable_`
+
+     Qualquer um dos dois serve. O que importa é que seja **a pública**.
+
+   > ### Cuidado: nessa mesma tela tem uma chave que você NÃO deve usar
+   >
+   > Ao lado da pública existe outra, chamada **`service_role`** ou **`secret`**
+   > (`sb_secret_...`). Ela ignora todas as regras de segurança do banco.
+   >
+   > Se você colar essa por engano, **tudo vai funcionar normalmente** — e é aí
+   > que mora o perigo: você não perceberia que qualquer visitante do site passou
+   > a poder ler os dados de todos os usuários.
+   >
+   > Regra simples: **se o nome tem `secret` ou `service_role`, não é essa.**
+   > Essa nunca sai do lugar onde está.
+
+   > Já a chave pública é pública de propósito, pode ficar tranquilo. Quem
+   > protege seus dados é uma regra dentro do banco (chamada RLS) que o
+   > `schema.sql` acabou de ligar: cada pessoa só enxerga as próprias conversas.
 
 ---
 
