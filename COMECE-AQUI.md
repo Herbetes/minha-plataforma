@@ -67,12 +67,23 @@ Guarde como: **CHAVE 1**
    Agora abra **esta página** noutra aba do navegador:
 
    ```
-   https://raw.githubusercontent.com/Herbetes/minha-plataforma/main/supabase/schema.sql
+   https://github.com/Herbetes/minha-plataforma/blob/main/supabase/schema.sql
    ```
 
-   Vai aparecer só texto puro, sem enfeite. Clique em qualquer lugar do texto e
-   aperte **Ctrl+A** (seleciona tudo) e depois **Ctrl+C** (copia).
-   No Mac é **Cmd+A** e **Cmd+C**.
+   Acima do texto do código, à direita, tem uma barra de ícones. Procure o de
+   **duas folhinhas sobrepostas** — passando o mouse aparece *Copy raw file*.
+   **Clique nele.** Pronto, está copiado.
+
+   > ### Não use Ctrl+A nessa página
+   >
+   > Parece que dá no mesmo, mas não dá. Se você tiver **qualquer extensão de IA
+   > no navegador** (Merlin, Monica, Sider, Grammarly e afins), ela desenha um
+   > botão flutuante por cima da página — e o "selecionar tudo" copia o texto
+   > desse botão junto com o arquivo.
+   >
+   > O resultado é um erro tipo `syntax error at or near "✕Merlin"`, apontando
+   > para uma linha que nem existe no arquivo. O botão *Copy raw file* copia só
+   > o arquivo e resolve isso de vez.
 
    Volte ao Supabase, **cole tudo** na caixa e clique em **Run**.
 
@@ -195,6 +206,8 @@ Vá pela mensagem que apareceu na tela:
 | O e-mail não chega | Quase sempre é caixa de spam | Olhe o spam. Se não estiver, veja Supabase → Authentication → Logs |
 | No chat aparece "[Erro ao falar com a IA...]" | A CHAVE 1 está errada, ou acabaram os créditos | Confira o saldo em console.anthropic.com → Billing |
 | Login funciona mas a conversa some no F5 | O `schema.sql` não rodou, ou rodou com erro | Refaça o passo 2.4 e veja se a mensagem foi verde |
+| No SQL Editor: `syntax error at or near "✕Merlin"` (ou outro nome de extensão) | Uma extensão de IA do navegador sujou a cópia | Limpe a caixa (Ctrl+A, Delete) e copie de novo pelo botão **Copy raw file**, nunca com Ctrl+A |
+| No SQL Editor: erro apontando uma linha maior que 84 | Veio texto a mais colado no fim | Ctrl+End na caixa: a última linha tem que ser `for each row execute function public.touch_conversation();`. Apague o que vier depois |
 | A tela fica branca | O deploy falhou | Vercel → Deployments → clique no último → aba Logs |
 
 **Em qualquer caso, me traga a mensagem exata que apareceu.** Com o texto do erro
