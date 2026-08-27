@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+/*
+ * Identidade herdada da landing original (verde-petróleo + laranja),
+ * ajustada para ter contraste suficiente em texto pequeno.
+ */
+@theme {
+  --color-marca-50: #eef7f5;
+  --color-marca-100: #d3ebe6;
+  --color-marca-300: #7ec4b6;
+  --color-marca-500: #0f7a68;
+  --color-marca-600: #0c6153;
+  --color-marca-700: #094a40;
+  --color-marca-900: #06302a;
+  --color-realce-500: #d1650a;
+  --color-realce-600: #a94f06;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: #f7faf9;
+  color: var(--color-marca-900);
+}
