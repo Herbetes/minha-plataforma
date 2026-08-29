@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const ABAS = [
   { href: "/app", rotulo: "Chat" },
   { href: "/app/cofre", rotulo: "Cofre" },
+  { href: "/app/vh", rotulo: "VH" },
 ];
 
 export default function PortalHeader({ email }: { email: string }) {
