@@ -256,7 +256,8 @@ para mandar o e-mail semanal, então essa peça seria montada de qualquer forma.
 | No SQL Editor: erro apontando uma linha maior que 84 | Veio texto a mais colado no fim | Ctrl+End na caixa: a última linha tem que ser `for each row execute function public.touch_conversation();`. Apague o que vier depois |
 | A tela fica branca | O deploy falhou | Vercel → Deployments → clique no último → aba Logs |
 | Build falha com `No Output Directory named "public" found` | O projeto na Vercel está configurado como site estático, não como Next.js | Settings → Build and Deployment → **Framework Preset: Next.js**, e desligue o override de **Output Directory**. Depois, Redeploy |
-| O site publicado é a versão antiga | A Vercel está publicando um commit velho | Deployments → veja o commit do topo. Se não for o mais recente da `main`, crie um deploy novo apontando para `main` |
+| O site publicado é a versão antiga | A Vercel está publicando um commit velho | Abra `SEU-ENDERECO/api/versao` — ele diz qual commit está no ar. Se não bater com o topo da `main` no GitHub, veja a linha abaixo |
+| Uma novidade não apareceu no site | **`Redeploy` republica o MESMO commit**, não o mais recente. É a pegadinha mais comum | Deployments → **Create Deployment** → escreva `main` → confirmar. Isso publica a versão atual. Use `Redeploy` só para repetir um build que falhou por motivo passageiro |
 
 **Em qualquer caso, me traga a mensagem exata que apareceu.** Com o texto do erro
 eu resolvo em um passo; sem ele, viramos os dois adivinhos.
