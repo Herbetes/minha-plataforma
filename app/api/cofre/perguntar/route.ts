@@ -1,11 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { anthropicApiKey, anthropicModel } from "@/lib/env";
-import {
-  TRECHOS_POR_PERGUNTA,
-  montarConsulta,
-  perguntaSchema,
-} from "@/lib/cofre";
+import { TRECHOS_POR_PERGUNTA, montarConsulta } from "@/lib/cofre";
+import { perguntaComPastaSchema } from "@/lib/pastas";
 import {
   COFRE_SYSTEM_PROMPT_V1,
   montarMensagem,
@@ -45,12 +42,12 @@ export async function POST(request: Request) {
     return bad("Corpo da requisição não é JSON válido.", 400);
   }
 
-  const parsed = perguntaSchema.safeParse(raw);
+  const parsed = perguntaComPastaSchema.safeParse(raw);
   if (!parsed.success) {
     return bad(parsed.error.issues[0]?.message ?? "Requisição inválida.", 400);
   }
 
-  const { pergunta } = parsed.data;
+  const { pergunta, pastaId, semPasta } = parsed.data;
 
   const consulta = montarConsulta(pergunta);
   if (!consulta) {
@@ -61,9 +58,13 @@ export async function POST(request: Request) {
   }
 
   // O RLS vale dentro da função: ela só enxerga os trechos deste usuário.
+  // pasta_id null procura em todos os documentos; com valor, mira só naquela
+  // pasta — o que melhora a resposta, e não só a organização.
   const { data, error } = await supabase.rpc("buscar_trechos", {
     consulta,
     limite: TRECHOS_POR_PERGUNTA,
+    pasta_id: pastaId ?? null,
+    sem_pasta: semPasta ?? false,
   });
 
   if (error) {
@@ -76,10 +77,13 @@ export async function POST(request: Request) {
   if (linhas.length === 0) {
     return NextResponse.json({
       vazio: true,
-      resposta:
-        "Não encontrei nada sobre isso nos seus documentos. Tente palavras que " +
-        "apareçam literalmente no texto — por exemplo o nome do locatário, o " +
-        "número da cláusula ou o índice de reajuste.",
+      resposta: pastaId || semPasta
+        ? "Não encontrei nada sobre isso nos documentos desta pasta. Tente " +
+          "procurar em todas as pastas, ou use palavras que apareçam " +
+          "literalmente no texto."
+        : "Não encontrei nada sobre isso nos seus documentos. Tente palavras " +
+          "que apareçam literalmente no texto — por exemplo o nome do " +
+          "locatário, o número da cláusula ou o índice de reajuste.",
       fontes: [],
     });
   }

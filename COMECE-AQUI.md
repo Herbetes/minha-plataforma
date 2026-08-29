@@ -287,6 +287,26 @@ locação em PDF, espere o status virar `pronto`, e pergunte algo como *"qual o
 índice de reajuste e quando vence?"*. A resposta vem com os trechos que a
 sustentam, numerados.
 
+### Pastas no Cofre
+
+Para organizar os documentos em pastas, rode mais um arquivo, do mesmo jeito:
+
+1. Abra
+   `https://github.com/Herbetes/minha-plataforma/blob/main/supabase/schema-pastas.sql`
+   → botão **Copy raw file**.
+2. Supabase → **SQL Editor** → **New query** → cole → **Run**.
+
+Depois disso, na aba Cofre aparece uma fileira de pastas. Você cria com **+ Nova**,
+renomeia e apaga pela pasta aberta, e move documentos pelo seletor de cada linha.
+Também ganha **Baixar** e **Apagar** em cada documento.
+
+**A pasta não é só arrumação — ela mira a busca.** Com a pasta "VH" aberta, a
+pergunta procura só nos documentos dela. Com muitos documentos isso melhora a
+resposta, porque o trecho certo deixa de competir com assunto de outra área.
+
+Apagar uma pasta **não apaga os documentos**: eles voltam para "Sem pasta".
+Apagar um documento, esse sim, remove o arquivo e o índice para sempre.
+
 > **Só PDF com texto selecionável por enquanto.** Se o seu contrato é uma foto
 > ou digitalização, o Cofre avisa que não conseguiu ler. Ler documento
 > escaneado (OCR) é uma melhoria prevista, não uma falha.

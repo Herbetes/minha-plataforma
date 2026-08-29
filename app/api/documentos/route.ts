@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     return bad(parsed.error.issues[0]?.message ?? "Requisição inválida.", 400);
   }
 
-  const { storagePath, title, bytes } = parsed.data;
+  const { storagePath, title, bytes, pastaId } = parsed.data;
 
   // O caminho tem que estar dentro da pasta do próprio usuário. As políticas do
   // Storage já garantem isso; conferir aqui evita registrar uma linha órfã
@@ -55,6 +55,7 @@ export async function POST(request: Request) {
       title,
       storage_path: storagePath,
       bytes: bytes ?? null,
+      folder_id: pastaId ?? null,
       status: "processando",
     })
     .select("id")

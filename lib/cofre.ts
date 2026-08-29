@@ -23,6 +23,7 @@ export const registrarDocumentoSchema = z.object({
   storagePath: z.string().trim().min(1),
   title: z.string().trim().min(1).max(300),
   bytes: z.number().int().nonnegative().optional(),
+  pastaId: z.uuid().nullable().optional(),
 });
 
 export type Trecho = { ordinal: number; content: string };
