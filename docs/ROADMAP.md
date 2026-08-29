@@ -4,7 +4,63 @@ Roadmap de aprendizado prático: seis projetos encadeados que saem do zero e che
 a um produto multiusuário, usando problemas reais do seu dia a dia como matéria-prima.
 
 Autor do plano: sessão de planejamento com Claude Code.
-Última revisão: 2026-08-27.
+Última revisão: 2026-08-29.
+
+---
+
+## 0. Estado real da trilha
+
+Atualizado depois da primeira sessão de construção. O que segue no documento é o
+plano; esta seção é o que de fato aconteceu.
+
+| Projeto | Estado | Observação |
+|---|---|---|
+| **0 — Portal** | **No ar** | Login por link mágico, chat com o Claude em streaming, histórico no Postgres. |
+| **1 — Cofre** | **No ar** | Envia PDF, pergunta em português, resposta com trechos citados. |
+| 2 — Agente VH | não começado | |
+| 3 — Radar | não começado | |
+| 4 — Copiloto | não começado | |
+| 5 — Produto | não começado | |
+
+Os dois primeiros saíram numa sessão só, não nas cinco semanas previstas. A
+estimativa original era conservadora para quem escreve o código à mão; com o
+código sendo escrito aqui, o gargalo real vira a configuração de contas e
+serviços, não a programação.
+
+### Decisão mudada no caminho
+
+**O Cofre usa busca textual do Postgres, não embeddings.** O plano previa busca
+semântica, que exigiria mais uma conta e mais uma chave de API. Depois de ver
+quanto custou configurar as três primeiras contas, a troca se pagou: a busca
+textual em português entende plural e conjugação ("reajustes" acha "reajuste") e
+resolve bem documentos onde se procura termo literal — nome de locatário, IGP-M,
+número de cláusula. O que ela não faz é sinônimo: perguntar "correção monetária"
+não acha "reajuste". Se isso incomodar na prática, a busca semântica entra como
+melhoria, sem refazer nada.
+
+### O que a trilha não previa e apareceu
+
+Nenhum dos problemas que custaram tempo estava no código. Todos vieram de
+configuração de serviço, e vale registrar porque vão se repetir:
+
+- **Projeto antigo na Vercel com configuração de site estático.** Ficou apontando
+  para uma pasta `public` que um app Next.js não gera. Resolvido com `vercel.json`
+  declarando o framework, mais a correção no painel.
+- **`Redeploy` republica o mesmo commit**, não o mais recente. Dá para publicar
+  várias vezes e continuar rodando código antigo, sem nenhum aviso. Daí ter
+  nascido o `/api/versao`, que responde o que está no ar.
+- **A publicação automática a cada push não está funcionando.** Cada versão nova
+  exige um *Create Deployment* manual apontando para `main`. Pendente de
+  investigação — provavelmente a conexão com o GitHub, feita em 2025.
+- **Limite de e-mail do Supabase.** O serviço embutido manda pouquíssimas
+  mensagens por hora e trava o login durante os testes. Resolvido com SMTP
+  próprio (Resend).
+- **Extensão de IA no navegador sujando o "copiar tudo".** Um `Ctrl+A` numa
+  página trouxe o texto de um botão flutuante junto e quebrou o SQL. Usar o botão
+  *Copy raw file* do GitHub elimina a classe inteira de problema.
+
+A lição para os próximos projetos: **reserve mais tempo para conectar serviços do
+que para escrever código.**
 
 ---
 
