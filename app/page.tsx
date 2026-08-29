@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 
 const MODULOS = [
   { nome: "Chat", estado: "no ar", texto: "Converse com o Claude e o histórico fica salvo." },
-  { nome: "Cofre", estado: "projeto 1", texto: "Seus documentos, com busca que cita a fonte." },
+  { nome: "Cofre", estado: "no ar", texto: "Seus documentos, com busca que cita a fonte." },
   { nome: "Agente VH", estado: "projeto 2", texto: "Conciliação de aluguéis com aprovação humana." },
   { nome: "Radar", estado: "projeto 3", texto: "E-mail semanal com o que exige atenção." },
 ];

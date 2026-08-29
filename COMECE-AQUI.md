@@ -263,6 +263,35 @@ eu resolvo em um passo; sem ele, viramos os dois adivinhos.
 
 ---
 
+## Passo 6 — Ligar o Cofre (2 min)
+
+O Cofre é a segunda aba do portal: você envia um PDF e pergunta sobre ele em
+português. Para funcionar, ele precisa das próprias tabelas.
+
+É o mesmo procedimento do passo 2, com outro arquivo:
+
+1. Abra
+   `https://github.com/Herbetes/minha-plataforma/blob/main/supabase/schema-cofre.sql`
+   e clique no botão **Copy raw file** (as duas folhinhas). Não use Ctrl+A.
+
+2. No Supabase: **SQL Editor** → **New query** → cole → **Run**.
+
+3. Esperado: a faixa verde `Success. No rows returned`.
+
+Isso cria as tabelas dos documentos e o balde privado onde os PDFs ficam
+guardados — cada usuário na própria pasta, sem acesso à do outro.
+
+**Testar:** abra o site, entre, e clique na aba **Cofre**. Envie um contrato de
+locação em PDF, espere o status virar `pronto`, e pergunte algo como *"qual o
+índice de reajuste e quando vence?"*. A resposta vem com os trechos que a
+sustentam, numerados.
+
+> **Só PDF com texto selecionável por enquanto.** Se o seu contrato é uma foto
+> ou digitalização, o Cofre avisa que não conseguiu ler. Ler documento
+> escaneado (OCR) é uma melhoria prevista, não uma falha.
+
+---
+
 ## Depois que estiver no ar
 
 Você não precisa mexer em código para usar. Mas se quiser entender ou evoluir:

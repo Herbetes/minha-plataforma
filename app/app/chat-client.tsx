@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { StoredMessage } from "@/lib/chat";
+import PortalHeader from "./portal-header";
 
 type Props = {
   email: string;
@@ -84,22 +85,7 @@ export default function ChatClient({ email, conversaInicial, historicoInicial }:
 
   return (
     <div className="flex h-screen flex-col">
-      <header className="border-b border-marca-100 bg-white">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-5 py-3">
-          <span className="font-semibold text-marca-700">Minha Plataforma</span>
-          <div className="flex items-center gap-3">
-            <span className="hidden text-sm text-marca-700/60 sm:inline">{email}</span>
-            <form action="/auth/signout" method="post">
-              <button
-                type="submit"
-                className="rounded-md border border-marca-300 px-3 py-1.5 text-sm font-medium text-marca-700 transition hover:bg-marca-50"
-              >
-                Sair
-              </button>
-            </form>
-          </div>
-        </div>
-      </header>
+      <PortalHeader email={email} />
 
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto flex max-w-3xl flex-col gap-4 px-5 py-8">
