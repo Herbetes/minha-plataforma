@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "diagnostico": "node scripts/diagnostico.mjs",
-    "verificar": "npm run typecheck && npm test && npm run build"
+    "verificar": "npm run typecheck && npm test && npm run build",
+    "schema": "bash scripts/gerar-schema.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.121.0",

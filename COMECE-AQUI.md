@@ -67,8 +67,13 @@ Guarde como: **CHAVE 1**
    Agora abra **esta página** noutra aba do navegador:
 
    ```
-   https://github.com/Herbetes/minha-plataforma/blob/main/supabase/schema.sql
+   https://github.com/Herbetes/minha-plataforma/blob/main/supabase/schema-completo.sql
    ```
+
+   > **É um arquivo só, e sempre o mesmo.** Ele traz tudo — chat, Cofre, pastas
+   > e o módulo VH — na ordem certa. Rodar de novo não apaga nem quebra nada,
+   > então sempre que eu publicar novidade, é só rodar este mesmo arquivo outra
+   > vez.
 
    Acima do texto do código, à direita, tem uma barra de ícones. Procure o de
    **duas folhinhas sobrepostas** — passando o mouse aparece *Copy raw file*.
@@ -253,6 +258,7 @@ para mandar o e-mail semanal, então essa peça seria montada de qualquer forma.
 | No chat aparece "[Erro ao falar com a IA...]" | A CHAVE 1 está errada, ou acabaram os créditos | Confira o saldo em console.anthropic.com → Billing |
 | Login funciona mas a conversa some no F5 | O `schema.sql` não rodou, ou rodou com erro | Refaça o passo 2.4 e veja se a mensagem foi verde |
 | No SQL Editor: `syntax error at or near "✕Merlin"` (ou outro nome de extensão) | Uma extensão de IA do navegador sujou a cópia | Limpe a caixa (Ctrl+A, Delete) e copie de novo pelo botão **Copy raw file**, nunca com Ctrl+A |
+| No SQL Editor: `relation "public.X" does not exist` | Você rodou um arquivo de schema fora de ordem | Use sempre o `schema-completo.sql`, que traz tudo na ordem certa. Rodar de novo é seguro |
 | No SQL Editor: erro apontando uma linha maior que 84 | Veio texto a mais colado no fim | Ctrl+End na caixa: a última linha tem que ser `for each row execute function public.touch_conversation();`. Apague o que vier depois |
 | A tela fica branca | O deploy falhou | Vercel → Deployments → clique no último → aba Logs |
 | Build falha com `No Output Directory named "public" found` | O projeto na Vercel está configurado como site estático, não como Next.js | Settings → Build and Deployment → **Framework Preset: Next.js**, e desligue o override de **Output Directory**. Depois, Redeploy |
@@ -269,18 +275,8 @@ eu resolvo em um passo; sem ele, viramos os dois adivinhos.
 O Cofre é a segunda aba do portal: você envia um PDF e pergunta sobre ele em
 português. Para funcionar, ele precisa das próprias tabelas.
 
-É o mesmo procedimento do passo 2, com outro arquivo:
-
-1. Abra
-   `https://github.com/Herbetes/minha-plataforma/blob/main/supabase/schema-cofre.sql`
-   e clique no botão **Copy raw file** (as duas folhinhas). Não use Ctrl+A.
-
-2. No Supabase: **SQL Editor** → **New query** → cole → **Run**.
-
-3. Esperado: a faixa verde `Success. No rows returned`.
-
-Isso cria as tabelas dos documentos e o balde privado onde os PDFs ficam
-guardados — cada usuário na própria pasta, sem acesso à do outro.
+As tabelas do Cofre já vêm no `schema-completo.sql` que você rodou no passo 2.
+Se você rodou aquele arquivo, não precisa fazer mais nada aqui.
 
 **Testar:** abra o site, entre, e clique na aba **Cofre**. Envie um contrato de
 locação em PDF, espere o status virar `pronto`, e pergunte algo como *"qual o
@@ -289,14 +285,7 @@ sustentam, numerados.
 
 ### Pastas no Cofre
 
-Para organizar os documentos em pastas, rode mais um arquivo, do mesmo jeito:
-
-1. Abra
-   `https://github.com/Herbetes/minha-plataforma/blob/main/supabase/schema-pastas.sql`
-   → botão **Copy raw file**.
-2. Supabase → **SQL Editor** → **New query** → cole → **Run**.
-
-Depois disso, na aba Cofre aparece uma fileira de pastas. Você cria com **+ Nova**,
+Já vêm no `schema-completo.sql`. Na aba Cofre aparece uma fileira de pastas. Você cria com **+ Nova**,
 renomeia e apaga pela pasta aberta, e move documentos pelo seletor de cada linha.
 Também ganha **Baixar** e **Apagar** em cada documento.
 
@@ -315,14 +304,8 @@ Apagar um documento, esse sim, remove o arquivo e o índice para sempre.
 
 ## Módulo VH (opcional)
 
-Se você for usar a conciliação de aluguéis, rode estes **três** arquivos, nesta
-ordem, do mesmo jeito que os anteriores (**Copy raw file** → SQL Editor → Run):
-
-1. `supabase/schema-vh.sql`
-2. `supabase/schema-vh-contas.sql`
-3. `supabase/schema-vh-fechamento.sql`
-
-Depois, no site, aba **VH**:
+As tabelas do VH já vêm no `schema-completo.sql`. Se você rodou aquele arquivo,
+está tudo pronto — vá direto para o site, aba **VH**:
 
 **1. Cadastro** (link no topo da tela) → cadastre as **contas** que recebem
 aluguel, marcando quais são de pessoa física. Depois os **contratos**, cada um

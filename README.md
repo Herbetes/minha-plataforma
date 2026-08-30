@@ -32,9 +32,13 @@ Três contas, todas com plano gratuito suficiente:
 
 1. Crie um projeto novo. Escolha a região **South America (São Paulo)**: os dados
    ficam no Brasil e a latência cai bastante.
-2. Abra **SQL Editor**, cole o conteúdo de [`supabase/schema.sql`](supabase/schema.sql)
-   inteiro e execute. Isso cria as tabelas `conversations` e `messages` e liga o
-   Row Level Security.
+2. Abra **SQL Editor**, cole o conteúdo de
+   [`supabase/schema-completo.sql`](supabase/schema-completo.sql) e execute.
+   É o único arquivo a rodar: traz portal, Cofre e módulo VH na ordem de
+   dependência, e é idempotente — rode de novo a cada versão nova.
+
+   Os arquivos por módulo (`schema.sql`, `schema-cofre.sql`, ...) continuam
+   sendo a fonte; o completo é gerado deles com `npm run schema`.
 3. Em **Project Settings → API**, copie `Project URL` e a chave `anon public`.
 4. Em **Authentication → URL Configuration**, adicione em *Redirect URLs*:
    - `http://localhost:3000/auth/callback`

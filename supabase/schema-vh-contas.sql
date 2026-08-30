@@ -86,9 +86,14 @@ create index if not exists transactions_account_idx
 
 -- A impressão digital passa a incluir a conta: o mesmo valor no mesmo dia em
 -- duas contas diferentes são dois lançamentos reais, não uma duplicata.
+--
+-- Índice nas colunas exatas, sem expressão: o ON CONFLICT da importação só
+-- reconhece índice assim. Com `coalesce` o Postgres recusa a gravação inteira.
+-- `nulls not distinct` faz o lançamento sem conta também não duplicar.
 drop index if exists transactions_impressao_idx;
+drop index if exists transactions_impressao_conta_idx;
 create unique index if not exists transactions_impressao_conta_idx
-  on public.transactions (user_id, coalesce(account_id::text, 'sem-conta'), impressao);
+  on public.transactions (user_id, account_id, impressao) nulls not distinct;
 
 -- ----------------------------------------------------------------------------
 -- RLS nas tabelas novas.
