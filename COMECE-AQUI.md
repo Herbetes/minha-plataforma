@@ -18,6 +18,9 @@ Três serviços conversando entre si. Todos têm plano gratuito que dá conta.
 | **Supabase** | Guarda as conversas e cuida do login | O arquivo e a portaria |
 | **Vercel** | Deixa o site no ar num endereço | O terreno e o endereço |
 
+(Mais tarde entra um quarto, o **Resend**, mas só quando você ligar o Radar —
+o módulo que manda e-mail. Ignore por enquanto.)
+
 Você vai criar conta nos três e depois **colar três senhas** (chamadas de
 "chaves") num lugar só, para eles se reconhecerem.
 
@@ -326,11 +329,108 @@ guardados no próprio mês.
 
 ---
 
+## Módulo Radar (opcional) — a automação que trabalha sem você
+
+Até aqui, nada acontece se você não abrir o site. O Radar inverte isso: toda
+segunda-feira de manhã ele olha os seus contratos sozinho e, **só se houver algo
+que mereça a sua atenção**, manda um e-mail. Semana calma não gera e-mail — aviso
+que chega vazio toda semana ensina a gente a ignorar o remetente.
+
+O que ele procura:
+
+- **Contrato vencendo** nos próximos 60 dias (ou já vencido e ainda marcado como ativo)
+- **Reajuste** neste mês ou no mês que vem
+- **Aluguel que não caiu**, contando 3 dias de folga depois do vencimento
+- **Mês passado ainda não fechado**
+
+### 1. Rodar o schema de novo (2 min)
+
+O Radar tem tabelas novas. Abra o `supabase/schema-completo.sql` no GitHub, use o
+botão **Copy raw file**, cole no **SQL Editor** do Supabase e execute. Rodar de
+novo é seguro: nada do que já existe é apagado.
+
+### 2. Criar a conta de envio de e-mail (5 min)
+
+1. Entre em **resend.com** e crie a conta (o plano gratuito manda 3.000 e-mails por mês).
+2. No menu, **API Keys** → **Create API Key** → copie a chave (começa com `re_`).
+
+> Se você já tinha configurado o Resend para o login do Supabase, **é a mesma
+> conta** — pode criar uma segunda chave ou reaproveitar a que já tem.
+
+Para o e-mail sair com um endereço seu (`radar@seudominio.com.br`), o Resend
+pede que você verifique o domínio em **Domains**. Enquanto não fizer isso, dá para
+testar com o remetente de testes que já vem configurado.
+
+### 3. Pegar a chave de serviço do Supabase (2 min)
+
+⚠️ **Atenção, esta é diferente de todas as outras.**
+
+Até agora eu disse: *"se o nome tem `secret` ou `service_role`, passa reto."* Essa
+regra continua valendo em todo lugar — **menos aqui**, e por um motivo específico.
+
+Essa chave enxerga o banco inteiro, ignorando a proteção que separa um usuário do
+outro. O Radar precisa dela porque roda de madrugada, sem ninguém logado: não
+existe sessão para o banco conferir. Ela vai para uma variável **sem** o prefixo
+`NEXT_PUBLIC_`, e é justamente esse detalhe que impede a chave de ser embutida no
+site e lida por qualquer visitante.
+
+Onde pegar: **Supabase → Project Settings → API Keys** → a chave marcada como
+`service_role` / `secret` → **Reveal** → copiar.
+
+**Não cole essa chave em conversa nenhuma, nem comigo.** Ela vai direto do
+Supabase para a Vercel.
+
+### 4. Guardar as chaves na Vercel (5 min)
+
+**Vercel → seu projeto → Settings → Environment Variables.** Crie quatro:
+
+| Name | Value |
+|---|---|
+| `SUPABASE_SERVICE_ROLE_KEY` | a chave do passo 3 |
+| `RESEND_API_KEY` | a chave `re_...` do passo 2 |
+| `CRON_SECRET` | invente uma senha longa e aleatória (30+ caracteres embaralhados). Ela não é para você digitar — é o que impede um estranho de disparar os e-mails |
+| `RADAR_REMETENTE` | `Radar VH <onboarding@resend.dev>` enquanto não verificar o domínio |
+
+Marque as três caixas (Production, Preview, Development) em cada uma.
+
+### 5. Publicar (2 min)
+
+**Deployments → Create Deployment → escreva `main` → confirmar.**
+
+Lembre: **`Redeploy` republica o commit antigo.** Depois de subir, confira em
+`SEU-ENDERECO/api/versao` se o commit bate com o topo da `main` no GitHub.
+
+### 6. Ligar e testar (3 min)
+
+Abra o site e clique na aba **Radar**. Você vai ver três blocos:
+
+- **Aviso semanal por e-mail** — o e-mail de destino, o botão **Ligar** e o botão
+  **Enviar agora (teste)**
+- **Agora** — os alertas do momento, em vermelho (crítico) e âmbar (atenção)
+- **Execuções** — o histórico, que registra **até as vezes em que não enviou nada**
+
+Confira o e-mail, clique em **Ligar** e depois em **Enviar agora (teste)**. Se a
+lista "Agora" estiver vazia, o teste vai dizer *"Nada exigindo atenção — nenhum
+e-mail enviado"*: é o comportamento certo, não um defeito. Para ver o e-mail de
+verdade, cadastre um contrato com vigência terminando nos próximos 60 dias.
+
+O envio automático acontece **segunda-feira às 8h** (horário de Brasília).
+
+| Problema | O que é | Como resolver |
+|---|---|---|
+| "Resend recusou o envio (403)" | O remetente usa um domínio que não foi verificado | Volte para `onboarding@resend.dev` ou verifique o domínio em Resend → Domains |
+| A tela do Radar dá erro ao carregar | As tabelas novas não foram criadas | Refaça o passo 1 |
+| Segunda-feira passou e não chegou nada | Pode ser que não houvesse nada a avisar | Abra a aba Radar → **Execuções**. Se houver linha da segunda com "sem envio", funcionou. Se não houver linha nenhuma, confira `CRON_SECRET` na Vercel |
+| Nunca aparece linha nenhuma em Execuções | O agendamento não está ativo | Vercel → seu projeto → aba **Cron Jobs**. O agendamento só passa a existir depois de um deploy feito **com** o `vercel.json` novo |
+
+---
+
 ## Depois que estiver no ar
 
 Você não precisa mexer em código para usar. Mas se quiser entender ou evoluir:
 
-- **O que vem a seguir** está em [`docs/ROADMAP.md`](docs/ROADMAP.md) — o próximo
-  módulo é o Cofre, onde você joga um contrato em PDF e pergunta em português.
+- **O que vem a seguir** está em [`docs/ROADMAP.md`](docs/ROADMAP.md) — Chat,
+  Cofre, VH e Radar já estão no ar; o próximo é o servidor MCP, que liga a
+  plataforma ao Claude que você já usa no dia a dia.
 - **A parte técnica** está no [`README.md`](README.md) — é lá que moram as
   instruções de terminal, para o dia em que você quiser mexer no código.

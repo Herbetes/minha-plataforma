@@ -2,8 +2,9 @@
 
 Portal de operações do Grupo. Next.js + Supabase + Claude, publicado na Vercel.
 
-Estado atual: **Projeto 0 do [roadmap](docs/ROADMAP.md) concluído** — login por link
-mágico, chat com o Claude em streaming e histórico que sobrevive ao fechar o navegador.
+Estado atual: **Projetos 0 a 3 do [roadmap](docs/ROADMAP.md) no ar** — login por link
+mágico, chat em streaming, Cofre de documentos com respostas citadas, módulo VH
+(conciliação por agente e fechamento mensal) e Radar (aviso semanal agendado).
 
 ---
 
@@ -15,7 +16,8 @@ Três contas, todas com plano gratuito suficiente:
 |---|---|---|
 | Anthropic | A chave da API do Claude | console.anthropic.com |
 | Supabase | Banco de dados e login | supabase.com |
-| Vercel | Publicar o site | vercel.com |
+| Vercel | Publicar o site e agendar o Radar | vercel.com |
+| Resend | Enviar o e-mail do Radar (só se for usar o módulo) | resend.com |
 
 ---
 
@@ -34,8 +36,8 @@ Três contas, todas com plano gratuito suficiente:
    ficam no Brasil e a latência cai bastante.
 2. Abra **SQL Editor**, cole o conteúdo de
    [`supabase/schema-completo.sql`](supabase/schema-completo.sql) e execute.
-   É o único arquivo a rodar: traz portal, Cofre e módulo VH na ordem de
-   dependência, e é idempotente — rode de novo a cada versão nova.
+   É o único arquivo a rodar: traz portal, Cofre, módulo VH e Radar na ordem
+   de dependência, e é idempotente — rode de novo a cada versão nova.
 
    Os arquivos por módulo (`schema.sql`, `schema-cofre.sql`, ...) continuam
    sendo a fonte; o completo é gerado deles com `npm run schema`.
@@ -173,18 +175,29 @@ app/
   login/                Login por link mágico
   auth/callback/        Troca o código do e-mail por uma sessão
   auth/signout/         Encerra a sessão
-  app/                  Área protegida: o chat
+  app/                  Área protegida: chat, Cofre, VH e Radar
   api/chat/route.ts     Backend do chat, com streaming
+  api/cofre/            Perguntas sobre documentos, com citação
+  api/vh/               Contas, contratos, extratos, conciliação, fechamento
+  api/radar/            Preferência, envio de teste e o alvo do agendamento
 lib/
   env.ts                Leitura de variáveis com erro legível
   chat.ts               Lógica pura (validação, histórico, título)
-  chat.test.ts          Testes dessa lógica
-  supabase/             Clientes de navegador, servidor e middleware
+  cofre.ts              Divisão em trechos e montagem da busca
+  vh*.ts                Leitura de extrato/planilha e pontuação de candidatos
+  radar.ts              Cálculo dos alertas — aritmética pura, com teste
+  radar-dados.ts        Consulta ao banco e montagem dos alertas
+  radar-email.ts        Assunto e corpo do e-mail, sem enviar nada
+  radar-executar.ts     Resumo pelo modelo, envio e gravação idempotente
+  *.test.ts             Testes da lógica pura
+  supabase/             Clientes de navegador, servidor, middleware e serviço
 prompts/
   chat.ts               Prompt do sistema, versionado
 supabase/
-  schema.sql            Tabelas, índices e políticas de RLS
+  schema-*.sql          Fonte por módulo
+  schema-completo.sql   Gerado por `npm run schema` — é o que se roda
 middleware.ts           Renova a sessão e protege /app
+vercel.json             Framework e o agendamento semanal do Radar
 docs/ROADMAP.md         A trilha completa dos seis projetos
 ```
 
@@ -206,9 +219,26 @@ opcional.
 cookie, que o navegador pode ter forjado. `getUser` valida o token no servidor do
 Supabase. Em rota protegida, essa diferença é a proteção inteira.
 
-**Sem ORM por enquanto.** O Projeto 0 fala com o banco pelo cliente do Supabase,
-que respeita o RLS automaticamente. O Drizzle entra no Projeto 1, quando as consultas
-ficarem complexas o bastante para justificar.
+**Sem ORM.** Toda a plataforma fala com o banco pelo cliente do Supabase, que
+respeita o RLS automaticamente. Nenhuma consulta até aqui ficou complexa o
+bastante para pagar o custo de uma camada a mais.
+
+**A chave de serviço tem um uso, e um só.** `SUPABASE_SERVICE_ROLE_KEY` ignora o
+RLS e por isso só aparece em `app/api/radar/executar/route.ts`, o alvo do
+agendamento — que roda sem sessão e portanto sem nada para o RLS avaliar. Lá,
+todo filtro por `user_id` está escrito à mão. Qualquer outro uso seria trocar a
+proteção do banco por atenção humana, que falha em silêncio.
+
+**A idempotência do Radar mora no banco, não no código.** A execução é gravada
+em `radar_runs` **antes** do envio, e um índice único parcial em
+`(user_id, chave) where origem = 'cron'` faz a segunda tentativa do mesmo dia
+esbarrar no banco. Gravar depois do envio seria a ordem errada: uma falha entre
+mandar e gravar mandaria o mesmo e-mail de novo.
+
+**O modelo escreve o resumo do Radar, não os alertas.** Os alertas saem de
+`lib/radar.ts`, que é aritmética de datas e valores com teste. O Claude recebe a
+lista pronta e só a coloca em prosa. Um alerta inventado destruiria a confiança
+nos outros, que estão certos — e se o modelo falhar, o e-mail sai sem resumo.
 
 **O prompt mora em `prompts/chat.ts`.** Prompt é código: quando o comportamento do
 assistente mudar, o `git log` do arquivo mostra o que mudou e quando.
@@ -231,8 +261,27 @@ custa bem menos.
 
 ---
 
+## Variáveis de ambiente
+
+| Variável | Obrigatória | Para quê |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | sim | Chat, Cofre, agente VH e resumo do Radar |
+| `ANTHROPIC_MODEL` | não | Trocar de modelo sem mexer no código |
+| `NEXT_PUBLIC_SUPABASE_URL` | sim | Endereço do projeto |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | sim | Chave pública; quem protege é o RLS |
+| `SUPABASE_SERVICE_ROLE_KEY` | só com Radar | Ignora o RLS. **Nunca** com prefixo `NEXT_PUBLIC_` |
+| `CRON_SECRET` | só com Radar | Autoriza a chamada agendada. A Vercel envia sozinha |
+| `RESEND_API_KEY` | só com Radar | Envio do e-mail |
+| `RADAR_REMETENTE` | não | Remetente; exige domínio verificado no Resend |
+| `NEXT_PUBLIC_SITE_URL` | não | Link do e-mail; na Vercel é deduzido sozinho |
+
+O `next build` roda sem nenhuma dessas: as variáveis são lidas dentro de funções,
+nunca no topo do módulo. É o que mantém o CI verde sem segredo nenhum.
+
+---
+
 ## Próximo passo
 
-**Projeto 1 — Cofre de documentos**: upload de PDF, busca semântica com `pgvector`
-e respostas que citam a cláusula de origem. O escopo está em
-[`docs/ROADMAP.md`](docs/ROADMAP.md).
+**Projeto 4 — servidor MCP**: expor o cadastro da plataforma como ferramentas para
+o Claude que você já usa fora dela, fechando o ciclo com a skill
+`agente-contabil-vh`. O escopo está em [`docs/ROADMAP.md`](docs/ROADMAP.md).

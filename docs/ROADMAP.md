@@ -17,8 +17,8 @@ plano; esta seção é o que de fato aconteceu.
 |---|---|---|
 | **0 — Portal** | **No ar** | Login por link mágico, chat com o Claude em streaming, histórico no Postgres. |
 | **1 — Cofre** | **No ar** | Envia PDF, pergunta em português, resposta com trechos citados. |
-| 2 — Agente VH | não começado | |
-| 3 — Radar | não começado | |
+| **2 — Agente VH** | **No ar** | Contas, contratos, extratos (PDF/CSV/OFX), planilha de condomínios, conciliação proposta por agente com aprovação humana e fechamento mensal. |
+| **3 — Radar** | **No ar** | Alertas calculados por código, aviso semanal por e-mail com idempotência diária, histórico das execuções. |
 | 4 — Copiloto | não começado | |
 | 5 — Produto | não começado | |
 
@@ -292,7 +292,7 @@ não antes.
 ### Projeto 3 — Radar (automação agendada)
 **Semanas 9–10 · dificuldade: média**
 
-**Objetivo.** Toda segunda-feira às 7h chega um e-mail com o que exige a sua atenção naquela
+**Objetivo.** Toda segunda-feira de manhã chega um e-mail com o que exige a sua atenção naquela
 semana — sem você ter feito nada.
 
 **O que ensina.** Agendamento, filas, novas tentativas, idempotência, alertas, e geração de
@@ -311,6 +311,33 @@ te avisou de algo que você teria esquecido.
 
 **Armadilha.** Job que roda duas vezes e manda duas cobranças. Toda tarefa agendada precisa de
 chave de idempotência: antes de agir, verifique se já agiu por aquele evento.
+
+#### Como ficou de fato
+
+Entregue em `lib/radar.ts` (cálculo), `lib/radar-dados.ts` (consulta),
+`lib/radar-email.ts` (conteúdo), `lib/radar-executar.ts` (execução),
+`app/api/radar/*` e a tela `/app/radar`. Cron da Vercel às 11h UTC de segunda,
+que é 8h em Brasília.
+
+Três decisões que fugiram do plano, e por quê:
+
+- **A idempotência ficou no banco, não no código.** Um índice único parcial em
+  `(user_id, chave) where origem = 'cron'` — e a gravação acontece **antes** do
+  envio. Verificar em código "será que já mandei hoje?" abre uma janela entre a
+  verificação e o envio; o índice não abre. O índice ser parcial é o que deixa o
+  botão de teste da tela ser apertado quantas vezes for preciso.
+- **Sem anexo `.xlsx` e sem Python.** O plano previa gerar planilha e rodar
+  Python no mesmo projeto. Nada disso apareceu como necessidade: o relatório do
+  mês já sai pelo VH, e o Radar é justamente o aviso curto que se lê no celular
+  sem abrir anexo. Duas dependências a menos.
+- **Nasceu uma regra que o plano não tinha: não mandar e-mail vazio.** Aviso
+  semanal que chega sem conteúdo ensina a pessoa a ignorar o remetente — e aí o
+  módulo inteiro perde a função. Semana calma grava a execução e não envia nada;
+  o histórico na tela é o que distingue "semana calma" de "automação parada".
+
+Também apareceu a primeira necessidade legítima da chave de serviço do Supabase:
+o cron roda sem ninguém logado, logo sem sessão para o RLS avaliar. Fica isolada
+numa rota só, com todo filtro por `user_id` escrito à mão.
 
 ---
 
@@ -433,10 +460,10 @@ custa mais caro do que parece.
 
 | Semanas | Projeto | Você sai com |
 |---|---|---|
-| 1–2 | Portal ressuscitado | URL pública, login real, chat com histórico |
-| 3–5 | Cofre | Busca que responde sobre os seus documentos, com citação |
-| 6–8 | Agente VH | Conciliação assistida de aluguéis, auditável |
-| 9–10 | Radar | E-mail semanal automático com o que exige atenção |
+| 1–2 | Portal ressuscitado | URL pública, login real, chat com histórico · **feito** |
+| 3–5 | Cofre | Busca que responde sobre os seus documentos, com citação · **feito** |
+| 6–8 | Agente VH | Conciliação assistida de aluguéis, auditável · **feito** |
+| 9–10 | Radar | E-mail semanal automático com o que exige atenção · **feito** |
 | 11–13 | Copiloto | Uma caixa de pergunta para todo o Grupo, com eval no CI |
 | 14+ | Produto | Multi-inquilino, LGPD, cobrança |
 
