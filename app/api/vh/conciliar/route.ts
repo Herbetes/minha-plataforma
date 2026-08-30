@@ -10,7 +10,7 @@ export async function POST(request: Request) {
   const { supabase, user } = await exigirUsuario();
   if (!user) return erro("Faça login.", 401);
 
-  const corpo = (await lerJson(request)) as { extratoId?: string } | undefined;
+  const corpo = (await lerJson(request)) as { fechamentoId?: string } | undefined;
 
   // Sem contrato cadastrado não há o que conciliar — e o agente gastaria
   // tokens para concluir isso sozinho.
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const resultado = await conciliar(supabase, user.id, corpo?.extratoId ?? null);
+    const resultado = await conciliar(supabase, user.id, corpo?.fechamentoId ?? null);
     return NextResponse.json(resultado);
   } catch (e) {
     console.error("[api/vh/conciliar] falha", e);

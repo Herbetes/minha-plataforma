@@ -22,6 +22,7 @@ type Contexto = {
   supabase: SupabaseClient;
   userId: string;
   runId: string;
+  closingId: string | null;
   passo: number;
 };
 
@@ -115,13 +116,23 @@ function montarFerramentas(ctx: Contexto) {
         .select("transaction_id")
         .eq("user_id", ctx.userId);
 
+      // Trabalha sobre o mês aberto, não sobre a base inteira.
+
+
       const excluir = new Set((jaPropostos ?? []).map((r) => r.transaction_id as string));
 
       const [{ data }, { data: contas }] = await Promise.all([
-        ctx.supabase
-          .from("transactions")
-          .select("id, data, historico, documento, valor_centavos, account_id")
-          .eq("user_id", ctx.userId)
+        (ctx.closingId
+          ? ctx.supabase
+              .from("transactions")
+              .select("id, data, historico, documento, valor_centavos, account_id")
+              .eq("user_id", ctx.userId)
+              .eq("closing_id", ctx.closingId)
+          : ctx.supabase
+              .from("transactions")
+              .select("id, data, historico, documento, valor_centavos, account_id")
+              .eq("user_id", ctx.userId)
+        )
           .order("data", { ascending: true })
           .limit(LOTE + excluir.size),
         ctx.supabase
@@ -302,6 +313,7 @@ function montarFerramentas(ctx: Contexto) {
             : input.justificativa,
         status: "proposta",
         run_id: ctx.runId,
+        closing_id: ctx.closingId,
       };
 
       const { error } = await ctx.supabase
@@ -359,7 +371,7 @@ export type ResultadoAgente = {
 export async function conciliar(
   supabase: SupabaseClient,
   userId: string,
-  statementId: string | null,
+  closingId: string | null,
 ): Promise<ResultadoAgente> {
   const modelo = anthropicModel();
 
@@ -368,7 +380,7 @@ export async function conciliar(
     .insert({
       user_id: userId,
       agente: "vh-conciliacao",
-      statement_id: statementId,
+      closing_id: closingId,
       modelo,
       status: "executando",
     })
@@ -377,7 +389,13 @@ export async function conciliar(
 
   if (runError || !run) throw new Error("Não foi possível abrir a execução.");
 
-  const ctx: Contexto = { supabase, userId, runId: run.id as string, passo: 0 };
+  const ctx: Contexto = {
+    supabase,
+    userId,
+    runId: run.id as string,
+    closingId,
+    passo: 0,
+  };
   const anthropic = new Anthropic({ apiKey: anthropicApiKey() });
 
   try {

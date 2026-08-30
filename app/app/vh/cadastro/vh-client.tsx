@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
+
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatarCentavos, paraCentavos } from "@/lib/vh";
-import PortalHeader from "../portal-header";
+import PortalHeader from "../../portal-header";
 
 export type Conta = {
   id: string;
@@ -232,11 +234,15 @@ export default function VhClient({
       <PortalHeader email={email} />
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-5 py-8">
-        <h1 className="text-2xl font-semibold text-marca-900">Agente VH</h1>
+        <div className="flex items-baseline justify-between gap-3">
+          <h1 className="text-2xl font-semibold text-marca-900">Cadastro</h1>
+          <Link href="/app/vh" className="text-sm font-medium text-marca-600 underline underline-offset-2">
+            Voltar aos meses
+          </Link>
+        </div>
         <p className="mt-2 text-marca-700/75">
-          Envie o extrato do banco. O agente propõe a conciliação com os
-          contratos e explica cada decisão. <strong>Nada é gravado como certo
-          até você aprovar.</strong>
+          Contas que recebem, contratos de locação e as propostas do agente. É a
+          base contra a qual cada extrato é conferido.
         </p>
 
         {erro && (
@@ -247,77 +253,6 @@ export default function VhClient({
         {aviso && (
           <p className="mt-4 rounded-md bg-marca-50 px-3 py-2 text-sm text-marca-700">{aviso}</p>
         )}
-
-        {/* ------------------------------------------------------- extrato */}
-        <section className="mt-8 rounded-lg border border-marca-100 bg-white p-5">
-          <h2 className="text-sm font-semibold text-marca-900">1. Extrato do banco</h2>
-          <p className="mt-1 text-xs text-marca-700/60">
-            Arquivo CSV ou OFX exportado pelo banco. Reenviar o mesmo extrato não
-            duplica lançamento.
-          </p>
-
-          <label htmlFor="conta-extrato" className="mt-3 block text-xs font-medium text-marca-900">
-            De qual conta é este extrato?
-          </label>
-          <select
-            id="conta-extrato"
-            value={contaExtrato}
-            onChange={(e) => setContaExtrato(e.target.value)}
-            className="mt-1 w-full rounded-md border border-marca-300 bg-white px-3 py-2 text-sm text-marca-700"
-          >
-            <option value="">Escolha a conta...</option>
-            {contasIniciais.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.apelido} {c.tipo === "pf" ? "(pessoa física)" : "(empresa)"}
-              </option>
-            ))}
-          </select>
-          {contasIniciais.length === 0 && (
-            <p className="mt-1 text-xs text-realce-600">
-              Cadastre suas contas na aba Contas antes de enviar extrato.
-            </p>
-          )}
-
-          <input
-            type="file"
-            accept=".csv,.ofx,.txt,text/csv"
-            onChange={enviarExtrato}
-            disabled={ocupado === "extrato"}
-            className="mt-3 block w-full text-sm text-marca-700 file:mr-3 file:rounded-md file:border-0 file:bg-marca-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-marca-700 disabled:opacity-60"
-          />
-
-          <div className="mt-4 border-t border-marca-100 pt-4">
-            <h3 className="text-sm font-semibold text-marca-900">2. Rodar o agente</h3>
-            <p className="mt-1 text-xs text-marca-700/60">
-              Ele lê os lançamentos pendentes, pontua contra cada contrato e
-              propõe. Pode levar um minuto.
-            </p>
-            <button
-              type="button"
-              onClick={rodarAgente}
-              disabled={ocupado === "conciliar" || contratosIniciais.length === 0}
-              className="mt-3 rounded-md bg-marca-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-marca-700 disabled:opacity-50"
-            >
-              {ocupado === "conciliar" ? "Conciliando..." : "Conciliar extrato"}
-            </button>
-            {contratosIniciais.length === 0 && (
-              <p className="mt-2 text-xs text-realce-600">
-                Cadastre um contrato na aba Contratos antes.
-              </p>
-            )}
-          </div>
-
-          {resumo && (
-            <div className="mt-4 rounded-md border border-marca-100 bg-marca-50/50 p-4">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-marca-700/60">
-                Resumo do agente
-              </h4>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-marca-900">
-                {resumo}
-              </p>
-            </div>
-          )}
-        </section>
 
         {/* ---------------------------------------------------------- abas */}
         <div className="mt-8 flex gap-2 border-b border-marca-100">

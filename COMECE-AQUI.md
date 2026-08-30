@@ -315,20 +315,31 @@ Apagar um documento, esse sim, remove o arquivo e o índice para sempre.
 
 ## Módulo VH (opcional)
 
-Se você for usar a conciliação de aluguéis, rode estes dois arquivos, na ordem,
-do mesmo jeito que os anteriores (**Copy raw file** → SQL Editor → Run):
+Se você for usar a conciliação de aluguéis, rode estes **três** arquivos, nesta
+ordem, do mesmo jeito que os anteriores (**Copy raw file** → SQL Editor → Run):
 
 1. `supabase/schema-vh.sql`
 2. `supabase/schema-vh-contas.sql`
+3. `supabase/schema-vh-fechamento.sql`
 
-Depois, na aba **VH**, comece por **Contas**: cadastre cada conta que recebe
-aluguel, marcando quais são de pessoa física. Só então cadastre os contratos
-(cada um apontando para a sua conta) e envie os extratos.
+Depois, no site, aba **VH**:
 
-**A ordem importa.** Sem as contas cadastradas o extrato não sobe, de propósito:
-sem saber de que conta veio um lançamento, o agente confunde imóveis de contas
-diferentes e não consegue distinguir um tributo pago pela empresa de um pago por
-sócio.
+**1. Cadastro** (link no topo da tela) → cadastre as **contas** que recebem
+aluguel, marcando quais são de pessoa física. Depois os **contratos**, cada um
+apontando para a sua conta.
+
+**2. Abrir mês** → escolha o mês e clique em Abrir.
+
+**3. Jogue os arquivos** — todos de uma vez: os extratos em PDF, CSV ou OFX e a
+planilha de condomínios. Cada arquivo é reconhecido pelo conteúdo, e o extrato
+diz sozinho de que conta é.
+
+**4. Conciliar** → o agente propõe. **Revisar** → você aprova ou corrige.
+**Gerar conferência** → sai o relatório. **Fechar mês** → congela os números.
+
+A tela inicial do VH é a lista dos meses, com receita e variação. Nada se perde
+de um mês para o outro — os arquivos que entraram e os que saíram ficam
+guardados no próprio mês.
 
 ---
 
