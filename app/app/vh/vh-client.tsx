@@ -5,6 +5,14 @@ import { useRouter } from "next/navigation";
 import { formatarCentavos, paraCentavos } from "@/lib/vh";
 import PortalHeader from "../portal-header";
 
+export type Conta = {
+  id: string;
+  apelido: string;
+  titular: string | null;
+  tipo: "pj" | "pf";
+  banco: string | null;
+};
+
 export type Contrato = {
   id: string;
   imovel: string;
@@ -13,6 +21,8 @@ export type Contrato = {
   valor_centavos: number;
   dia_vencimento: number | null;
   indice_reajuste: string | null;
+  account_id: string | null;
+  padroes: string[] | null;
   ativo: boolean;
 };
 
@@ -50,14 +60,19 @@ export default function VhClient({
   email,
   contratosIniciais,
   propostasIniciais,
+  contasIniciais,
 }: {
   email: string;
   contratosIniciais: Contrato[];
   propostasIniciais: Proposta[];
+  contasIniciais: Conta[];
 }) {
   const router = useRouter();
 
-  const [aba, setAba] = useState<"propostas" | "contratos">("propostas");
+  const [aba, setAba] = useState<"propostas" | "contratos" | "contas">("propostas");
+  /** De qual conta veio o extrato que está sendo enviado. */
+  const [contaExtrato, setContaExtrato] = useState<string>("");
+  const [novaConta, setNovaConta] = useState({ apelido: "", titular: "", tipo: "pj" as "pj" | "pf" });
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -72,6 +87,8 @@ export default function VhClient({
     valor: "",
     diaVencimento: "",
     indiceReajuste: "",
+    contaId: "",
+    padroes: "",
   });
 
   const pendentes = useMemo(
@@ -123,8 +140,16 @@ export default function VhClient({
         valorCentavos: centavos,
         diaVencimento: novo.diaVencimento ? Number(novo.diaVencimento) : null,
         indiceReajuste: novo.indiceReajuste || null,
+        contaId: novo.contaId || null,
+        padroes: novo.padroes
+          .split(/[,;\n]/)
+          .map((p) => p.trim())
+          .filter((p) => p.length >= 2),
       });
-      setNovo({ imovel: "", locatario: "", documento: "", valor: "", diaVencimento: "", indiceReajuste: "" });
+      setNovo({
+        imovel: "", locatario: "", documento: "", valor: "",
+        diaVencimento: "", indiceReajuste: "", contaId: "", padroes: "",
+      });
     });
   }
 
@@ -135,17 +160,40 @@ export default function VhClient({
     });
   }
 
+  // ----------------------------------------------------------------- contas
+
+  async function criarConta(evento: React.FormEvent) {
+    evento.preventDefault();
+    if (!novaConta.apelido.trim()) return;
+
+    await acao("nova-conta", async () => {
+      await pedir("/api/vh/contas", "POST", {
+        apelido: novaConta.apelido,
+        titular: novaConta.titular || null,
+        tipo: novaConta.tipo,
+      });
+      setNovaConta({ apelido: "", titular: "", tipo: "pj" });
+    });
+  }
+
   // --------------------------------------------------------------- extrato
 
   async function enviarExtrato(evento: React.ChangeEvent<HTMLInputElement>) {
     const arquivo = evento.target.files?.[0];
     if (!arquivo) return;
 
+    if (!contaExtrato) {
+      setErro("Escolha primeiro de qual conta veio este extrato.");
+      evento.target.value = "";
+      return;
+    }
+
     await acao("extrato", async () => {
       const conteudo = await arquivo.text();
       const r = await pedir("/api/vh/extratos", "POST", {
         nome: arquivo.name,
         conteudo,
+        contaId: contaExtrato,
       });
       setAviso(
         `${r.lidos} lançamentos lidos · ${r.novos} novos · ${r.repetidos} já existiam` +
@@ -207,6 +255,29 @@ export default function VhClient({
             Arquivo CSV ou OFX exportado pelo banco. Reenviar o mesmo extrato não
             duplica lançamento.
           </p>
+
+          <label htmlFor="conta-extrato" className="mt-3 block text-xs font-medium text-marca-900">
+            De qual conta é este extrato?
+          </label>
+          <select
+            id="conta-extrato"
+            value={contaExtrato}
+            onChange={(e) => setContaExtrato(e.target.value)}
+            className="mt-1 w-full rounded-md border border-marca-300 bg-white px-3 py-2 text-sm text-marca-700"
+          >
+            <option value="">Escolha a conta...</option>
+            {contasIniciais.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.apelido} {c.tipo === "pf" ? "(pessoa física)" : "(empresa)"}
+              </option>
+            ))}
+          </select>
+          {contasIniciais.length === 0 && (
+            <p className="mt-1 text-xs text-realce-600">
+              Cadastre suas contas na aba Contas antes de enviar extrato.
+            </p>
+          )}
+
           <input
             type="file"
             accept=".csv,.ofx,.txt,text/csv"
@@ -254,6 +325,7 @@ export default function VhClient({
             [
               ["propostas", `Para revisar (${pendentes.length})`],
               ["contratos", `Contratos (${contratosIniciais.length})`],
+              ["contas", `Contas (${contasIniciais.length})`],
             ] as const
           ).map(([chave, rotulo]) => (
             <button
@@ -416,6 +488,22 @@ export default function VhClient({
                 placeholder="Índice de reajuste (IGP-M)"
                 className="rounded-md border border-marca-300 px-3 py-2 text-sm outline-none focus:border-marca-600"
               />
+              <select
+                value={novo.contaId}
+                onChange={(e) => setNovo({ ...novo, contaId: e.target.value })}
+                className="rounded-md border border-marca-300 bg-white px-3 py-2 text-sm text-marca-700 outline-none focus:border-marca-600"
+              >
+                <option value="">Conta que recebe este aluguel...</option>
+                {contasIniciais.map((c) => (
+                  <option key={c.id} value={c.id}>{c.apelido}</option>
+                ))}
+              </select>
+              <input
+                value={novo.padroes}
+                onChange={(e) => setNovo({ ...novo, padroes: e.target.value })}
+                placeholder="Como aparece no extrato (separe por vírgula)"
+                className="rounded-md border border-marca-300 px-3 py-2 text-sm outline-none focus:border-marca-600 sm:col-span-2"
+              />
               <button
                 type="submit"
                 disabled={ocupado === "novo-contrato"}
@@ -425,7 +513,11 @@ export default function VhClient({
               </button>
               <p className="text-xs text-marca-700/60 sm:col-span-2">
                 CPF/CNPJ e dia de vencimento não são obrigatórios, mas melhoram
-                muito a pontuação do agente.
+                muito a pontuação. <strong>A conta que recebe</strong> evita que o
+                agente confunda imóveis de contas diferentes. E os{" "}
+                <strong>padrões de extrato</strong> são o que mais ajuda: escreva
+                como o pagador aparece no banco, que costuma ser diferente do nome
+                do contrato — por exemplo <code>J S SOUZA, SOUZA COMERCIO</code>.
               </p>
             </form>
 
@@ -439,6 +531,10 @@ export default function VhClient({
                         {c.imovel} · {formatarCentavos(Number(c.valor_centavos))}
                         {c.dia_vencimento && ` · vence dia ${c.dia_vencimento}`}
                         {c.indice_reajuste && ` · ${c.indice_reajuste}`}
+                        {c.account_id &&
+                          ` · ${contasIniciais.find((a) => a.id === c.account_id)?.apelido ?? "conta"}`}
+                        {c.padroes && c.padroes.length > 0 &&
+                          ` · ${c.padroes.length} padrão(ões) de extrato`}
                       </p>
                     </div>
                     <button
@@ -449,6 +545,71 @@ export default function VhClient({
                     >
                       Apagar
                     </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
+        {/* --------------------------------------------------------- contas */}
+        {aba === "contas" && (
+          <section className="mt-6">
+            <p className="text-sm text-marca-700/75">
+              Os aluguéis chegam por mais de uma conta, e cada imóvel recebe na
+              sua. Cadastrar as contas evita que o agente confunda imóveis — e é
+              o que permite reconhecer um tributo pago por pessoa física como
+              empréstimo do sócio à empresa.
+            </p>
+
+            <form
+              onSubmit={criarConta}
+              className="mt-4 grid gap-3 rounded-lg border border-marca-100 bg-white p-4 sm:grid-cols-3"
+            >
+              <input
+                required
+                value={novaConta.apelido}
+                onChange={(e) => setNovaConta({ ...novaConta, apelido: e.target.value })}
+                placeholder="Apelido * (VH, Herbetes...)"
+                className="rounded-md border border-marca-300 px-3 py-2 text-sm outline-none focus:border-marca-600"
+              />
+              <input
+                value={novaConta.titular}
+                onChange={(e) => setNovaConta({ ...novaConta, titular: e.target.value })}
+                placeholder="Titular"
+                className="rounded-md border border-marca-300 px-3 py-2 text-sm outline-none focus:border-marca-600"
+              />
+              <select
+                value={novaConta.tipo}
+                onChange={(e) =>
+                  setNovaConta({ ...novaConta, tipo: e.target.value as "pj" | "pf" })
+                }
+                className="rounded-md border border-marca-300 bg-white px-3 py-2 text-sm text-marca-700"
+              >
+                <option value="pj">Empresa</option>
+                <option value="pf">Pessoa física</option>
+              </select>
+              <button
+                type="submit"
+                disabled={ocupado === "nova-conta"}
+                className="rounded-md bg-marca-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-marca-700 disabled:opacity-50 sm:col-span-3 sm:justify-self-start"
+              >
+                Adicionar conta
+              </button>
+            </form>
+
+            {contasIniciais.length > 0 && (
+              <ul className="mt-4 divide-y divide-marca-100 rounded-lg border border-marca-100 bg-white">
+                {contasIniciais.map((c) => (
+                  <li key={c.id} className="flex items-baseline justify-between gap-4 px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-marca-900">{c.apelido}</p>
+                      {c.titular && (
+                        <p className="mt-0.5 truncate text-xs text-marca-700/60">{c.titular}</p>
+                      )}
+                    </div>
+                    <span className="shrink-0 rounded-full bg-marca-50 px-2.5 py-0.5 text-xs font-medium text-marca-600">
+                      {c.tipo === "pf" ? "pessoa física" : "empresa"}
+                    </span>
                   </li>
                 ))}
               </ul>

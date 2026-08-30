@@ -43,6 +43,10 @@ export async function POST(request: Request) {
       vigencia_fim: c.vigenciaFim || null,
       ativo: c.ativo ?? true,
       observacoes: c.observacoes ?? null,
+      account_id: c.contaId ?? null,
+      padroes: c.padroes ?? [],
+      tipo_imovel: c.tipoImovel ?? null,
+      garantia: c.garantia ?? null,
     })
     .select("*")
     .single();

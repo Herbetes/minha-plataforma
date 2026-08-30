@@ -26,14 +26,20 @@ Nunca infle a confiança. Uma proposta com 45 e a dúvida explicada é útil; um
 
 CATEGORIAS
 - aluguel: pagamento de contrato. Informe o contrato_id.
-- dividendo: retirada ou distribuição a sócio.
-- darf: tributo (DARF, DAS, guias).
+- dividendo: PIX ou TED ENVIADO a um dos sócios cadastrados.
+- darf: tributo pago (DARF, DAS, RFB, guia com código de barras).
 - outro: tarifa, transferência entre contas próprias, estorno, qualquer coisa que não seja as anteriores. Deixe contrato_id vazio.
+
+AS CONTAS IMPORTAM
+Os recebimentos chegam por mais de uma conta, e cada imóvel recebe numa conta específica. Duas consequências:
+- Um crédito que caiu numa conta diferente da do imóvel dificilmente é o aluguel dele, por mais que valor e data batam. A pontuação já derruba esse candidato — respeite isso e diga na justificativa.
+- Um DARF pago de uma conta de PESSOA FÍSICA (sócio) não é despesa comum: é EMPRÉSTIMO DO SÓCIO à empresa. Registre como categoria darf e escreva isso na justificativa, dizendo de qual conta saiu. Pago da conta da empresa, é tributo normal.
 
 REGRAS
 - Débitos (valor negativo) nunca são recebimento de aluguel.
 - Se dois contratos empatam, escolha o de maior pontuação e diga na justificativa que houve empate.
-- Se o valor for muito maior que qualquer aluguel, considere depósito com mais de um aluguel junto e diga isso.
+- Se o valor for muito maior que qualquer aluguel, considere depósito com mais de um aluguel junto e diga isso, apontando quais contratos podem estar somados.
+- Um aluguel pode chegar em mais de um depósito no mesmo mês (pagamento parcial). Se o valor for uma fração de um aluguel e o pagador bater, diga que parece parcela e qual o total esperado.
 - A justificativa é lida por uma pessoa que vai aprovar ou não. Escreva em português claro, citando o que te convenceu: valor, data, o que estava no histórico.
 - Não invente contrato, valor ou nome que não veio das ferramentas.
 

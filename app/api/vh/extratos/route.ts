@@ -9,7 +9,7 @@ export const maxDuration = 60;
 const schema = z.object({
   nome: z.string().trim().min(1).max(200),
   conteudo: z.string().min(1, "Arquivo vazio").max(4_000_000),
-  conta: z.string().trim().max(60).nullable().optional(),
+  contaId: z.uuid("Escolha a conta de onde veio este extrato"),
 });
 
 export async function POST(request: Request) {
@@ -21,7 +21,18 @@ export async function POST(request: Request) {
     return erro(parsed.error.issues[0]?.message ?? "Requisição inválida.", 400);
   }
 
-  const { nome, conteudo, conta } = parsed.data;
+  const { nome, conteudo, contaId } = parsed.data;
+  // A conta tem que ser sua. Sem essa checagem, um id chutado gravaria
+  // lançamentos apontando para conta de outra pessoa.
+  const { data: conta } = await supabase
+    .from("accounts")
+    .select("id, apelido")
+    .eq("id", contaId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!conta) return erro("Conta não encontrada.", 404);
+
   const ehOfx = /\.ofx$/i.test(nome) || /<STMTTRN>/i.test(conteudo);
   const { lancamentos, ignoradas } = ehOfx ? lerOFX(conteudo) : lerCSV(conteudo);
 
@@ -39,7 +50,8 @@ export async function POST(request: Request) {
     .from("statements")
     .insert({
       user_id: user.id,
-      conta: conta ?? null,
+      account_id: contaId,
+      conta: conta.apelido as string,
       arquivo_nome: nome,
       origem: ehOfx ? "ofx" : "csv",
       periodo_inicio: datas[0],
@@ -59,13 +71,14 @@ export async function POST(request: Request) {
       lancamentos.map((l) => ({
         user_id: user.id,
         statement_id: extrato.id,
+        account_id: contaId,
         data: l.data,
         historico: l.historico,
         documento: l.documento,
         valor_centavos: l.valorCentavos,
-        impressao: impressaoDigital(l),
+        impressao: impressaoDigital({ ...l, contaId }),
       })),
-      { onConflict: "user_id,impressao", ignoreDuplicates: true },
+      { onConflict: "user_id,account_id,impressao", ignoreDuplicates: true },
     )
     .select("id");
 

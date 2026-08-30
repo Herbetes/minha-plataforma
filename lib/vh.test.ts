@@ -231,3 +231,77 @@ describe("competencia", () => {
     expect(competencia("2026-08-28", null)).toBe("2026-08");
   });
 });
+
+describe("contas — recebimentos por mais de uma conta", () => {
+  const contaVH = "conta-vh";
+  const contaH = "conta-herbetes";
+  const doVH: Contrato = { ...contrato, contaId: contaVH };
+
+  it("confirma quando o crédito caiu na conta do imóvel", () => {
+    const r = pontuar(lanc({ contaId: contaVH }), doVH);
+    expect(r.score).toBeGreaterThanOrEqual(90);
+    expect(r.motivos.join(" ")).toContain("conta certa");
+  });
+
+  it("derruba o candidato quando caiu em outra conta, mesmo com valor e nome batendo", () => {
+    const mesmaConta = pontuar(lanc({ contaId: contaVH }), doVH).score;
+    const outraConta = pontuar(lanc({ contaId: contaH }), doVH);
+
+    expect(outraConta.score).toBeLessThan(mesmaConta);
+    expect(outraConta.score).toBeLessThanOrEqual(20);
+    expect(outraConta.motivos[0]).toContain("conta diferente");
+  });
+
+  it("não penaliza quando a conta não foi informada", () => {
+    const semConta = pontuar(lanc(), { ...contrato, contaId: null });
+    expect(semConta.score).toBeGreaterThanOrEqual(90);
+  });
+
+  it("dois lançamentos iguais em contas diferentes são lançamentos diferentes", () => {
+    const a = impressaoDigital(lanc({ contaId: contaVH }));
+    const b = impressaoDigital(lanc({ contaId: contaH }));
+    expect(a).not.toBe(b);
+  });
+
+  it("o mesmo lançamento na mesma conta continua sendo um só", () => {
+    expect(impressaoDigital(lanc({ contaId: contaVH })))
+      .toBe(impressaoDigital(lanc({ contaId: contaVH })));
+  });
+});
+
+describe("padrões de pagador", () => {
+  it("reconhece o pagador pelo padrão cadastrado, não pelo nome do contrato", () => {
+    // No extrato o locatário aparece abreviado — o nome do contrato não casa.
+    const comPadrao: Contrato = { ...contrato, padroes: ["J S SOUZA"] };
+    const r = pontuar(lanc({ historico: "PIX RECEBIDO J S SOUZA" }), comPadrao);
+
+    expect(r.motivos.join(" ")).toContain("padrão de pagador cadastrado");
+    expect(r.score).toBeGreaterThanOrEqual(90);
+  });
+
+  it("funciona quando quem paga é a empresa do locatário", () => {
+    const comPadrao: Contrato = {
+      ...contrato,
+      locatario: "Maria Oliveira",
+      padroes: ["OLIVEIRA COMERCIO LTDA"],
+    };
+    const r = pontuar(lanc({ historico: "TED OLIVEIRA COMERCIO LTDA" }), comPadrao);
+    expect(r.score).toBeGreaterThanOrEqual(90);
+  });
+
+  it("ignora acento e caixa ao comparar o padrão", () => {
+    const comPadrao: Contrato = { ...contrato, padroes: ["joão s. souza"] };
+    const r = pontuar(lanc({ historico: "PIX JOAO S SOUZA" }), comPadrao);
+    expect(r.motivos.join(" ")).toContain("padrão de pagador");
+  });
+
+  it("cai para o nome do contrato quando nenhum padrão bate", () => {
+    const comPadrao: Contrato = { ...contrato, padroes: ["OUTRA EMPRESA"] };
+    const r = pontuar(lanc(), comPadrao);
+    expect(r.motivos.join(" ")).toContain("nome do locatário");
+  });
+
+  it("lista de padrões vazia não quebra nada", () => {
+    expect(pontuar(lanc(), { ...contrato, padroes: [] }).score).toBeGreaterThanOrEqual(90);
+  });
+});

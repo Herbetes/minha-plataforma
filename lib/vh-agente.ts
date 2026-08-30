@@ -70,12 +70,22 @@ function montarFerramentas(ctx: Contexto) {
       "Lista os contratos de locação ativos, com locatário, valor do aluguel e dia de vencimento.",
     inputSchema: z.object({}),
     run: async () => {
-      const { data } = await ctx.supabase
-        .from("contracts")
-        .select("id, imovel, locatario, documento, valor_centavos, dia_vencimento")
-        .eq("user_id", ctx.userId)
-        .eq("ativo", true)
-        .order("locatario");
+      const [{ data }, { data: contas }] = await Promise.all([
+        ctx.supabase
+          .from("contracts")
+          .select("id, imovel, locatario, documento, valor_centavos, dia_vencimento, account_id, padroes")
+          .eq("user_id", ctx.userId)
+          .eq("ativo", true)
+          .order("locatario"),
+        ctx.supabase
+          .from("accounts")
+          .select("id, apelido, tipo")
+          .eq("user_id", ctx.userId),
+      ]);
+
+      const apelido = new Map(
+        (contas ?? []).map((a) => [a.id as string, a.apelido as string]),
+      );
 
       const saida = (data ?? []).map((c) => ({
         contrato_id: c.id,
@@ -84,6 +94,8 @@ function montarFerramentas(ctx: Contexto) {
         documento: c.documento,
         valor: formatarCentavos(Number(c.valor_centavos)),
         dia_vencimento: c.dia_vencimento,
+        conta_destino: c.account_id ? apelido.get(c.account_id as string) : null,
+        padroes_de_pagador: c.padroes ?? [],
       }));
 
       await registrarPasso(ctx, "listar_contratos_ativos", {}, saida);
@@ -105,24 +117,44 @@ function montarFerramentas(ctx: Contexto) {
 
       const excluir = new Set((jaPropostos ?? []).map((r) => r.transaction_id as string));
 
-      const { data } = await ctx.supabase
-        .from("transactions")
-        .select("id, data, historico, documento, valor_centavos")
-        .eq("user_id", ctx.userId)
-        .order("data", { ascending: true })
-        .limit(LOTE + excluir.size);
+      const [{ data }, { data: contas }] = await Promise.all([
+        ctx.supabase
+          .from("transactions")
+          .select("id, data, historico, documento, valor_centavos, account_id")
+          .eq("user_id", ctx.userId)
+          .order("data", { ascending: true })
+          .limit(LOTE + excluir.size),
+        ctx.supabase
+          .from("accounts")
+          .select("id, apelido, tipo")
+          .eq("user_id", ctx.userId),
+      ]);
+
+      const conta = new Map(
+        (contas ?? []).map((a) => [
+          a.id as string,
+          { apelido: a.apelido as string, tipo: a.tipo as string },
+        ]),
+      );
 
       const saida = (data ?? [])
         .filter((t) => !excluir.has(t.id as string))
         .slice(0, LOTE)
-        .map((t) => ({
-          lancamento_id: t.id,
-          data: t.data,
-          historico: t.historico,
-          documento: t.documento,
-          valor: formatarCentavos(Number(t.valor_centavos)),
-          tipo: Number(t.valor_centavos) >= 0 ? "crédito" : "débito",
-        }));
+        .map((t) => {
+          const c = t.account_id ? conta.get(t.account_id as string) : undefined;
+          return {
+            lancamento_id: t.id,
+            data: t.data,
+            historico: t.historico,
+            documento: t.documento,
+            valor: formatarCentavos(Number(t.valor_centavos)),
+            tipo: Number(t.valor_centavos) >= 0 ? "crédito" : "débito",
+            conta: c?.apelido ?? null,
+            // O tipo da conta decide se um DARF é tributo comum ou
+            // empréstimo do sócio à empresa.
+            conta_e_pessoa_fisica: c ? c.tipo === "pf" : null,
+          };
+        });
 
       await registrarPasso(ctx, "listar_lancamentos_pendentes", {}, { total: saida.length });
       return JSON.stringify(saida);
@@ -146,7 +178,7 @@ function montarFerramentas(ctx: Contexto) {
     run: async ({ lancamento_id }) => {
       const { data: t } = await ctx.supabase
         .from("transactions")
-        .select("id, data, historico, documento, valor_centavos")
+        .select("id, data, historico, documento, valor_centavos, account_id")
         .eq("id", lancamento_id)
         .eq("user_id", ctx.userId)
         .maybeSingle();
@@ -159,7 +191,7 @@ function montarFerramentas(ctx: Contexto) {
 
       const { data: cs } = await ctx.supabase
         .from("contracts")
-        .select("id, imovel, locatario, documento, valor_centavos, dia_vencimento")
+        .select("id, imovel, locatario, documento, valor_centavos, dia_vencimento, account_id, padroes")
         .eq("user_id", ctx.userId)
         .eq("ativo", true);
 
@@ -168,6 +200,7 @@ function montarFerramentas(ctx: Contexto) {
         historico: t.historico as string,
         documento: (t.documento as string) ?? null,
         valorCentavos: Number(t.valor_centavos),
+        contaId: (t.account_id as string) ?? null,
       };
 
       const contratos: Contrato[] = (cs ?? []).map((c) => ({
@@ -177,6 +210,8 @@ function montarFerramentas(ctx: Contexto) {
         documento: (c.documento as string) ?? null,
         valorCentavos: Number(c.valor_centavos),
         diaVencimento: (c.dia_vencimento as number) ?? null,
+        contaId: (c.account_id as string) ?? null,
+        padroes: (c.padroes as string[]) ?? [],
       }));
 
       const saida = {
@@ -282,7 +317,33 @@ function montarFerramentas(ctx: Contexto) {
     },
   });
 
-  return [listarContratos, listarLancamentos, pontuarCandidatos, registrarProposta];
+  /** Só leitura: quem são os sócios, para reconhecer dividendo. */
+  const listarSocios = betaZodTool({
+    name: "listar_socios",
+    description:
+      "Lista os sócios cadastrados. Um PIX ou TED enviado a um deles é dividendo, não despesa.",
+    inputSchema: z.object({}),
+    run: async () => {
+      const { data } = await ctx.supabase
+        .from("partners")
+        .select("nome, documento")
+        .eq("user_id", ctx.userId)
+        .eq("ativo", true)
+        .order("nome");
+
+      const saida = (data ?? []).map((s) => ({ nome: s.nome, documento: s.documento }));
+      await registrarPasso(ctx, "listar_socios", {}, saida);
+      return JSON.stringify(saida);
+    },
+  });
+
+  return [
+    listarContratos,
+    listarLancamentos,
+    listarSocios,
+    pontuarCandidatos,
+    registrarProposta,
+  ];
 }
 
 export type ResultadoAgente = {
@@ -332,8 +393,9 @@ export async function conciliar(
         {
           role: "user",
           content:
-            "Concilie os lançamentos pendentes do extrato contra os contratos ativos. " +
-            "Registre uma proposta para cada lançamento analisado.",
+            "Concilie os lançamentos pendentes contra os contratos ativos. " +
+            "Comece listando contratos, sócios e lançamentos. Repare em qual conta " +
+            "cada lançamento caiu. Registre uma proposta para cada um.",
         },
       ],
     });

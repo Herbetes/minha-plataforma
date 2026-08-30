@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import VhClient, { type Contrato, type Proposta } from "./vh-client";
+import VhClient, { type Conta, type Contrato, type Proposta } from "./vh-client";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +12,7 @@ export default async function VhPage() {
 
   if (!user) redirect("/login");
 
-  const [contratos, propostas] = await Promise.all([
+  const [contratos, propostas, contas] = await Promise.all([
     supabase.from("contracts").select("*").eq("user_id", user.id).order("locatario"),
     supabase
       .from("reconciliations")
@@ -23,6 +23,7 @@ export default async function VhPage() {
       .eq("user_id", user.id)
       .order("confianca", { ascending: false })
       .limit(200),
+    supabase.from("accounts").select("*").eq("user_id", user.id).order("apelido"),
   ]);
 
   return (
@@ -30,6 +31,7 @@ export default async function VhPage() {
       email={user.email ?? ""}
       contratosIniciais={(contratos.data ?? []) as Contrato[]}
       propostasIniciais={(propostas.data ?? []) as unknown as Proposta[]}
+      contasIniciais={(contas.data ?? []) as Conta[]}
     />
   );
 }

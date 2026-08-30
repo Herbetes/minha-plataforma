@@ -313,6 +313,25 @@ Apagar um documento, esse sim, remove o arquivo e o índice para sempre.
 
 ---
 
+## Módulo VH (opcional)
+
+Se você for usar a conciliação de aluguéis, rode estes dois arquivos, na ordem,
+do mesmo jeito que os anteriores (**Copy raw file** → SQL Editor → Run):
+
+1. `supabase/schema-vh.sql`
+2. `supabase/schema-vh-contas.sql`
+
+Depois, na aba **VH**, comece por **Contas**: cadastre cada conta que recebe
+aluguel, marcando quais são de pessoa física. Só então cadastre os contratos
+(cada um apontando para a sua conta) e envie os extratos.
+
+**A ordem importa.** Sem as contas cadastradas o extrato não sobe, de propósito:
+sem saber de que conta veio um lançamento, o agente confunde imóveis de contas
+diferentes e não consegue distinguir um tributo pago pela empresa de um pago por
+sócio.
+
+---
+
 ## Depois que estiver no ar
 
 Você não precisa mexer em código para usar. Mas se quiser entender ou evoluir:

@@ -74,6 +74,8 @@ export type Lancamento = {
   historico: string;
   documento: string | null;
   valorCentavos: number;
+  /** Conta em que o lançamento caiu. Os aluguéis chegam por mais de uma. */
+  contaId?: string | null;
 };
 
 /**
@@ -83,8 +85,12 @@ export type Lancamento = {
  * receita do mês em silêncio.
  */
 export function impressaoDigital(l: Lancamento): string {
-  const base = [l.data, l.valorCentavos, l.historico.replace(/\s+/g, " ").trim().toLowerCase()]
-    .join("|");
+  const base = [
+    l.contaId ?? "sem-conta",
+    l.data,
+    l.valorCentavos,
+    l.historico.replace(/\s+/g, " ").trim().toLowerCase(),
+  ].join("|");
   return createHash("sha256").update(base).digest("hex").slice(0, 32);
 }
 
@@ -238,6 +244,16 @@ export type Contrato = {
   documento: string | null;
   valorCentavos: number;
   diaVencimento: number | null;
+  /** Conta em que ESTE imóvel recebe. Cada um tem a sua. */
+  contaId?: string | null;
+  /**
+   * Como o pagador aparece no extrato.
+   *
+   * O locatário assina como "João da Silva Souza" e paga como "J S SOUZA", ou
+   * pela empresa dele, ou pela esposa. Comparar só com o nome do contrato erra
+   * justamente nesses casos, que são a maioria.
+   */
+  padroes?: string[];
 };
 
 export type Candidato = {
@@ -308,19 +324,32 @@ export function pontuar(l: Lancamento, c: Contrato): Candidato {
     }
   }
 
-  // --- nome no histórico (até 25)
+  // --- quem pagou (até 25)
   const hist = normalizarTexto(l.historico);
-  const partes = normalizarTexto(c.locatario)
-    .split(" ")
-    .filter((p) => p.length >= 4);
-  const encontradas = partes.filter((p) => hist.includes(p));
 
-  if (partes.length > 0 && encontradas.length === partes.length) {
+  // Padrão cadastrado vem primeiro: foi você que confirmou que aquele texto
+  // no extrato é este locatário, então vale mais que semelhança de nome.
+  const padraoQueBateu = (c.padroes ?? [])
+    .map((p) => normalizarTexto(p))
+    .filter((p) => p.length >= 3)
+    .find((p) => hist.includes(p));
+
+  if (padraoQueBateu) {
     score += 25;
-    motivos.push("nome do locatário aparece inteiro no histórico");
-  } else if (encontradas.length > 0) {
-    score += 15;
-    motivos.push(`parte do nome do locatário no histórico (${encontradas.join(", ")})`);
+    motivos.push(`padrão de pagador cadastrado bate ("${padraoQueBateu}")`);
+  } else {
+    const partes = normalizarTexto(c.locatario)
+      .split(" ")
+      .filter((p) => p.length >= 4);
+    const encontradas = partes.filter((p) => hist.includes(p));
+
+    if (partes.length > 0 && encontradas.length === partes.length) {
+      score += 25;
+      motivos.push("nome do locatário aparece inteiro no histórico");
+    } else if (encontradas.length > 0) {
+      score += 15;
+      motivos.push(`parte do nome do locatário no histórico (${encontradas.join(", ")})`);
+    }
   }
 
   // --- documento (até 15)
@@ -341,6 +370,27 @@ export function pontuar(l: Lancamento, c: Contrato): Candidato {
         }
       }
     }
+  }
+
+  // --- conta destino
+  //
+  // Cada imóvel recebe numa conta específica. Um crédito que caiu noutra conta
+  // dificilmente é o aluguel dele, por mais que valor e data batam — então a
+  // divergência derruba o candidato em vez de só descontar pontos.
+  if (l.contaId && c.contaId && l.contaId !== c.contaId) {
+    return {
+      contratoId: c.id,
+      locatario: c.locatario,
+      score: Math.min(Math.round(score * 0.2), 20),
+      motivos: [
+        "o lançamento caiu numa conta diferente da conta deste imóvel",
+        ...motivos,
+      ],
+    };
+  }
+
+  if (l.contaId && c.contaId && l.contaId === c.contaId && score > 0) {
+    motivos.push("caiu na conta certa deste imóvel");
   }
 
   if (motivos.length === 0) motivos.push("nada em comum além de ser um crédito");
@@ -394,6 +444,19 @@ export const contratoSchema = z.object({
   vigenciaFim: z.string().trim().nullable().optional(),
   ativo: z.boolean().optional(),
   observacoes: z.string().trim().max(1000).nullable().optional(),
+  contaId: z.uuid().nullable().optional(),
+  padroes: z.array(z.string().trim().min(2).max(80)).max(20).optional(),
+  tipoImovel: z.string().trim().max(40).nullable().optional(),
+  garantia: z.string().trim().max(200).nullable().optional(),
+});
+
+export const contaSchema = z.object({
+  apelido: z.string().trim().min(1, "Informe um apelido para a conta").max(40),
+  titular: z.string().trim().max(120).nullable().optional(),
+  tipo: z.enum(["pj", "pf"]),
+  banco: z.string().trim().max(40).nullable().optional(),
+  agencia: z.string().trim().max(20).nullable().optional(),
+  numero: z.string().trim().max(30).nullable().optional(),
 });
 
 export const decisaoSchema = z.object({
