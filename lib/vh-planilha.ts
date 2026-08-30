@@ -23,7 +23,7 @@ export type LeituraPlanilha = {
 const COLUNA_IMOVEL = ["imovel", "imóvel", "unidade", "apartamento", "apto", "sala", "descricao", "descrição"];
 const COLUNA_VALOR = ["valor", "total", "valor total", "bruto", "valor bruto", "condominio", "condomínio"];
 
-function normalizar(v: unknown): string {
+export function normalizar(v: unknown): string {
   return String(v ?? "")
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
@@ -31,7 +31,7 @@ function normalizar(v: unknown): string {
     .toLowerCase();
 }
 
-function acharColuna(cabecalho: LinhaPlanilha, candidatos: string[]): number {
+export function acharColuna(cabecalho: LinhaPlanilha, candidatos: string[]): number {
   const norm = cabecalho.map(normalizar);
   for (const c of candidatos) {
     const i = norm.indexOf(normalizar(c));
@@ -46,7 +46,7 @@ function acharColuna(cabecalho: LinhaPlanilha, candidatos: string[]): number {
 }
 
 /** Aceita número vindo da célula ou texto no formato brasileiro. */
-function valorParaCentavos(v: unknown): number | null {
+export function valorParaCentavos(v: unknown): number | null {
   if (typeof v === "number" && Number.isFinite(v)) return Math.round(v * 100);
 
   const texto = String(v ?? "").trim();

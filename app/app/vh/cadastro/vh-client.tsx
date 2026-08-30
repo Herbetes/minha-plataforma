@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatarCentavos, paraCentavos } from "@/lib/vh";
 import PortalHeader from "../../portal-header";
+import ImportarPlanilha from "./importar-planilha";
 
 export type Conta = {
   id: string;
@@ -377,7 +378,9 @@ export default function VhClient({
 
         {/* ------------------------------------------------------ contratos */}
         {aba === "contratos" && (
-          <section className="mt-6">
+          <section className="mt-6 space-y-6">
+            <ImportarPlanilha contas={contasIniciais.map((c) => c.apelido)} />
+
             <form
               onSubmit={criarContrato}
               className="grid gap-3 rounded-lg border border-marca-100 bg-white p-4 sm:grid-cols-2"

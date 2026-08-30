@@ -311,16 +311,40 @@ As tabelas do VH já vêm no `schema-completo.sql`. Se você rodou aquele arquiv
 está tudo pronto — vá direto para o site, aba **VH**:
 
 **1. Cadastro** (link no topo da tela) → cadastre as **contas** que recebem
-aluguel, marcando quais são de pessoa física. Depois os **contratos**, cada um
-apontando para a sua conta.
+aluguel, marcando quais são de pessoa física.
 
-**2. Abrir mês** → escolha o mês e clique em Abrir.
+**2. Contratos — não digite tudo à mão.** Na aba **Contratos** há o bloco
+*Importar da planilha da VH*: envie o **Movimento Contábil da VH** e a
+plataforma lê a aba `CADASTRO DE IMÓVEIS` sozinha.
 
-**3. Jogue os arquivos** — todos de uma vez: os extratos em PDF, CSV ou OFX e a
+Ela mostra o que entendeu **antes** de gravar: imóvel, locatário, aluguel, dia
+de vencimento, mês e índice de reajuste, vigência e conta. Você desmarca o que
+não quiser e clica em *Importar*.
+
+Três coisas que valem saber:
+
+- **Linhas que não vieram aparecem listadas, com o motivo.** Imóvel vago,
+  contrato encerrado, célula de valor mesclada (a SALA 1802 é assim). Nada é
+  descartado em silêncio.
+- **Onde ficou dúvida, aparece um ⚠ na linha** — uma conta que não bateu com as
+  que você cadastrou, uma data que não deu para ler. O contrato entra assim
+  mesmo; você corrige no formulário depois.
+- **Reimportar não duplica.** Imóvel que já está cadastrado é pulado, nunca
+  sobrescrito — inclusive se você tiver corrigido algo à mão aqui.
+
+Cadastre as contas **antes** de importar: é assim que o "H" da planilha vira a
+conta "Herbetes" sozinho. Sem isso funciona igual, só entra sem conta.
+
+Se preferir, o formulário logo abaixo continua ali para cadastrar um contrato de
+cada vez.
+
+**3. Abrir mês** → escolha o mês e clique em Abrir.
+
+**4. Jogue os arquivos** — todos de uma vez: os extratos em PDF, CSV ou OFX e a
 planilha de condomínios. Cada arquivo é reconhecido pelo conteúdo, e o extrato
 diz sozinho de que conta é.
 
-**4. Conciliar** → o agente propõe. **Revisar** → você aprova ou corrige.
+**5. Conciliar** → o agente propõe. **Revisar** → você aprova ou corrige.
 **Gerar conferência** → sai o relatório. **Fechar mês** → congela os números.
 
 A tela inicial do VH é a lista dos meses, com receita e variação. Nada se perde

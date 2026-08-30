@@ -185,6 +185,7 @@ lib/
   chat.ts               Lógica pura (validação, histórico, título)
   cofre.ts              Divisão em trechos e montagem da busca
   vh*.ts                Leitura de extrato/planilha e pontuação de candidatos
+  vh-cadastro.ts        Importação da aba CADASTRO DE IMÓVEIS da planilha da VH
   radar.ts              Cálculo dos alertas — aritmética pura, com teste
   radar-dados.ts        Consulta ao banco e montagem dos alertas
   radar-email.ts        Assunto e corpo do e-mail, sem enviar nada
