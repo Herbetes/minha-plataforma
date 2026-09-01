@@ -51,11 +51,67 @@ export function identificarConta(texto: string): { agencia: string | null; conta
 
 // ------------------------------------------------------- extrato em PDF
 
-const DINHEIRO = /-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2}/g;
-const DATA_NA_LINHA = /^\s*(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(.*)$/;
+/**
+ * O extrato do BB em PDF vem em DOIS arranjos de coluna, e os dois precisam
+ * funcionar. Descobri isso comparando os extratos reais da VH (PJ) com os de
+ * pessoa física — o cabeçalho denuncia a diferença:
+ *
+ *   PJ:  "Dia Lote Documento Histórico Valor"   → o valor vem por último e o
+ *        extrator de texto o joga na linha ANTERIOR à data:
+ *            2.900,00 (-)
+ *            03/08/2026 13105 80301
+ *            Pix - Enviado
+ *            02/08 05:32 HEITOR VIEIRA DE HOLLANDA
+ *
+ *   PF:  "Dia Documento ValorLote Histórico"    → data e valor na MESMA linha:
+ *            03/08/2026 500,00 (-)13105 80301
+ *            Pix - Enviado
+ *            03/08 16:11 HERBETES DE HOLLANDA
+ *
+ * Nos dois casos o histórico continua nas linhas seguintes, e é lá que está o
+ * pagador — inclusive o CPF/CNPJ dele, que é o que permite casar o depósito
+ * com o contrato.
+ */
 
-/** Linhas que são saldo, não movimento. */
-const LINHA_DE_SALDO = /saldo\s+(anterior|do\s+dia|final|em|atual)/i;
+/** Valor em reais seguido do sinal entre parênteses: "1.234,56 (+)". */
+const VALOR_COM_SINAL = String.raw`([\d.]*\d,\d{2})\s*\((\+|-)\)`;
+
+/** PF: data, valor e sinal na mesma linha. */
+const MOVIMENTO_PF = new RegExp(String.raw`^(\d{2}/\d{2}/\d{4})\s+` + VALOR_COM_SINAL + String.raw`\s*(.*)$`);
+
+/** PJ: o valor vem sozinho, uma linha antes da data. */
+const VALOR_ISOLADO = new RegExp(String.raw`^` + VALOR_COM_SINAL + String.raw`\s*(.*)$`);
+
+/** PJ: a linha da data, sem valor. */
+const DATA_ISOLADA = /^(\d{2}\/\d{2}\/\d{4})\s+(.*)$/;
+
+/** Lote e número do documento no começo do resto: "13105 80301 Pagamento...". */
+const LOTE_E_DOCUMENTO = /^(\d{3,6})\s+(\d+)\s*(.*)$/;
+
+/** O saldo corrido de cada dia. É informação do banco, não movimento. */
+const SALDO_DO_DIA = /saldo\s+do\s+dia/i;
+const SALDO_ANTERIOR = /saldo\s+anterior/i;
+/** O banco escreve o saldo final espaçado: "S A L D O". */
+const SALDO_FINAL = /^s\s*a\s*l\s*d\s*o\b/i;
+
+/** Data que o banco usa para linha de totalização, não para movimento. */
+const DATA_NULA = "00/00/0000";
+
+/**
+ * CPF ou CNPJ do pagador, como aparece na linha de detalhe do Pix.
+ *
+ * O BB escreve zero à esquerda até completar 14 dígitos, então um CPF chega
+ * como "00007597761996". Guardamos os dígitos como vieram: quem compara já
+ * desliza uma janela de 6 dígitos, justamente porque cada banco mascara uma
+ * parte diferente do documento.
+ */
+const DOCUMENTO_PAGADOR = /\b(\d{11}|\d{14})\b/;
+
+/** Onde o extrato deixa de listar movimento e começa a falar de outra coisa. */
+const FIM_DOS_LANCAMENTOS = /informa[çc][õo]es adicionais|aplica[çc][õo]es financeiras|limite.*cheque|cet\b/i;
+
+/** Quantas linhas de continuação um histórico pode ter. */
+const MAX_CONTINUACAO = 3;
 
 export type LeituraExtrato = {
   lancamentos: Lancamento[];
@@ -64,13 +120,19 @@ export type LeituraExtrato = {
   saldoFinal: number | null;
 };
 
+type EmMontagem = {
+  data: string;
+  valorCentavos: number;
+  documentoBanco: string | null;
+  partes: string[];
+};
+
 /**
- * Lê o texto de um extrato em PDF.
+ * Lê o texto de um extrato do BB em PDF.
  *
- * O PDF não é tabela: é texto posicionado numa página. A regra que funciona é
- * "linha que começa com data é movimento", e o valor é o primeiro número em
- * formato de dinheiro — quando há um segundo, ele é o saldo corrido da conta,
- * não outro lançamento.
+ * Devolve débito como número NEGATIVO. O sinal vem do marcador (+)/(-) do
+ * próprio extrato, não do contexto: deduzir sinal por palavra do histórico
+ * erraria em transferência entre contas do mesmo dono.
  */
 export function lerExtratoPDF(texto: string): LeituraExtrato {
   const linhas = texto
@@ -84,69 +146,150 @@ export function lerExtratoPDF(texto: string): LeituraExtrato {
   let saldoInicial: number | null = null;
   let saldoFinal: number | null = null;
 
-  for (const linha of linhas) {
-    const m = linha.match(DATA_NA_LINHA);
+  let pendente: number | null = null;
+  // Caixa em volta do lançamento em montagem: as funções abaixo escrevem nele,
+  // e uma variável solta faria o compilador achar que ele nunca é preenchido.
+  const aberto: { atual: EmMontagem | null } = { atual: null };
 
-    if (!m) {
-      // Fora das linhas de movimento, ainda interessa capturar os saldos.
-      if (LINHA_DE_SALDO.test(linha)) {
-        const v = linha.match(DINHEIRO);
-        if (v?.length) {
-          const centavos = paraCentavos(v[v.length - 1]);
-          if (centavos !== null) {
-            if (saldoInicial === null && /anterior/i.test(linha)) saldoInicial = centavos;
-            else saldoFinal = centavos;
-          }
-        }
-      }
-      continue;
+  function fechar() {
+    const atual = aberto.atual;
+    if (!atual) return;
+    const historico = atual.partes.join(" ").replace(/\s+/g, " ").trim();
+    // O documento que interessa é o do PAGADOR, achado nas linhas de detalhe —
+    // nunca o número de documento do banco, que é sequencial e casaria com
+    // qualquer coisa.
+    const detalhe = atual.partes.slice(1).join(" ");
+    const documento = detalhe.match(DOCUMENTO_PAGADOR)?.[1] ?? null;
+
+    if (historico.length >= 2) {
+      lancamentos.push({
+        data: atual.data,
+        historico,
+        documento,
+        valorCentavos: atual.valorCentavos,
+      });
+    } else {
+      ignoradas += 1;
     }
-
-    const data = paraDataISO(m[1]);
-    const resto = m[2];
-    const valores = resto.match(DINHEIRO);
-
-    if (!data || !valores?.length) {
-      ignoradas++;
-      continue;
-    }
-
-    if (LINHA_DE_SALDO.test(resto)) {
-      const centavos = paraCentavos(valores[valores.length - 1]);
-      if (centavos !== null) {
-        if (saldoInicial === null && /anterior/i.test(resto)) saldoInicial = centavos;
-        else saldoFinal = centavos;
-      }
-      continue;
-    }
-
-    const bruto = paraCentavos(valores[0]);
-    if (bruto === null) {
-      ignoradas++;
-      continue;
-    }
-
-    // O extrato do BB marca o sinal com C (crédito) ou D (débito) depois do
-    // valor, em vez de usar número negativo.
-    const marcador = resto.slice(resto.lastIndexOf(valores[0]) + valores[0].length).trim();
-    const ehDebito = /^d\b/i.test(marcador) || bruto < 0;
-    const valorCentavos = ehDebito ? -Math.abs(bruto) : Math.abs(bruto);
-
-    const historico = resto
-      .replace(DINHEIRO, " ")
-      .replace(/\s+[CD]\s*$/i, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    if (historico.length < 2) {
-      ignoradas++;
-      continue;
-    }
-
-    const documento = historico.match(/\b(\d{6,})\b/)?.[1] ?? null;
-
-    lancamentos.push({ data, historico, documento, valorCentavos });
+    aberto.atual = null;
   }
+
+  function assinado(valor: string, sinal: string): number | null {
+    const centavos = paraCentavos(valor);
+    if (centavos === null) return null;
+    return sinal === "-" ? -Math.abs(centavos) : Math.abs(centavos);
+  }
+
+  function abrir(dataBR: string, valorCentavos: number, resto: string) {
+    const data = paraDataISO(dataBR);
+    if (!data) {
+      ignoradas += 1;
+      return;
+    }
+    const m = resto.match(LOTE_E_DOCUMENTO);
+    aberto.atual = {
+      data,
+      valorCentavos,
+      documentoBanco: m ? m[2] : null,
+      partes: [(m ? m[3] : resto).trim()].filter(Boolean),
+    };
+  }
+
+  for (const linha of linhas) {
+    if (FIM_DOS_LANCAMENTOS.test(linha)) {
+      fechar();
+      pendente = null;
+      continue;
+    }
+
+    // ------------------------------------------------------- formato PF
+    const pf = linha.match(MOVIMENTO_PF);
+    if (pf) {
+      fechar();
+      pendente = null;
+      const valor = assinado(pf[2], pf[3]);
+      const resto = pf[4].trim();
+
+      if (valor === null) {
+        ignoradas += 1;
+        continue;
+      }
+      if (SALDO_ANTERIOR.test(resto)) {
+        saldoInicial = valor;
+        continue;
+      }
+      if (SALDO_FINAL.test(resto)) {
+        saldoFinal = valor;
+        continue;
+      }
+      if (SALDO_DO_DIA.test(resto)) continue;
+
+      abrir(pf[1], valor, resto);
+      continue;
+    }
+
+    // -------------------------------------------- formato PJ: valor solto
+    const solto = linha.match(VALOR_ISOLADO);
+    if (solto) {
+      const valor = assinado(solto[1], solto[2]);
+      const resto = solto[3].trim();
+
+      // Saldo do dia do formato PF vem assim: "1.349,81 (+)Saldo do dia".
+      if (SALDO_DO_DIA.test(resto)) {
+        fechar();
+        pendente = null;
+        continue;
+      }
+      if (SALDO_FINAL.test(resto)) {
+        fechar();
+        saldoFinal = valor;
+        pendente = null;
+        continue;
+      }
+
+      fechar();
+      pendente = valor;
+      continue;
+    }
+
+    // --------------------------------------------- formato PJ: data solta
+    const dt = linha.match(DATA_ISOLADA);
+    if (dt) {
+      const resto = dt[2].trim();
+
+      // Linha de totalização do banco. Consome o valor pendente sem gravar.
+      if (dt[1] === DATA_NULA || SALDO_DO_DIA.test(resto)) {
+        pendente = null;
+        continue;
+      }
+      if (SALDO_ANTERIOR.test(resto)) {
+        if (pendente !== null) saldoInicial = pendente;
+        pendente = null;
+        continue;
+      }
+      if (SALDO_FINAL.test(resto)) {
+        if (pendente !== null) saldoFinal = pendente;
+        pendente = null;
+        continue;
+      }
+
+      if (pendente === null) {
+        ignoradas += 1;
+        continue;
+      }
+
+      abrir(dt[1], pendente, resto);
+      pendente = null;
+      continue;
+    }
+
+    // ------------------------------------------ continuação do histórico
+    if (aberto.atual && aberto.atual.partes.length <= MAX_CONTINUACAO) {
+      aberto.atual.partes.push(linha);
+    }
+  }
+
+  fechar();
 
   return { lancamentos, ignoradas, saldoInicial, saldoFinal };
 }

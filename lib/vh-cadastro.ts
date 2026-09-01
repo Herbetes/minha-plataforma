@@ -29,6 +29,10 @@ export type ContratoImportado = {
   tipoImovel: string | null;
   garantia: string | null;
   contaApelido: string | null;
+  condominioCentavos: number | null;
+  iptuCentavos: number | null;
+  /** Nomes como o locatário aparece no extrato. É o que faz o matching casar. */
+  padroes: string[];
   observacoes: string | null;
   linha: number;
   /** O que ficou incerto nesta linha. Não impede importar; pede conferência. */
@@ -66,7 +70,8 @@ const COLUNAS = {
   fim: ["fim", "fim da vigencia", "fim da vigência", "vigencia fim", "vigência fim", "termino", "término", "data final", "vigencia", "vigência"],
   garantia: ["garantia", "tipo de garantia", "detalhes da garantia"],
   tipo: ["tipo de imovel", "tipo de imóvel", "tipo"],
-  conta: ["conta", "conta destino", "banco", "recebimento", "titular"],
+  conta: ["conta destino", "conta", "banco", "recebimento", "titular"],
+  padroes: ["padroes matching", "padrões matching", "padroes", "padrões", "matching", "pagador"],
   status: ["status", "situacao", "situação", "ativo"],
   observacoes: ["observacoes", "observações", "obs", "observacao", "observação"],
 } as const;
@@ -81,8 +86,26 @@ const MESES = [
 /** Texto que indica imóvel sem contrato vigente. */
 const VAGO = /^(vago|vaga|disponivel|desocupad[oa]|sem locat|livre|-+)$/;
 
+/**
+ * Célula preenchida de propósito com uma NÃO-resposta.
+ *
+ * "INDETERMINADO (venceu Mar/2024)" e "N/A - Pool" não são erro de leitura:
+ * são a informação de que não há prazo. Tratá-las como falha encheria a tela
+ * de avisos falsos, e aviso falso ensina a ignorar os verdadeiros.
+ */
+const SEM_PRAZO = /indeterminad|^n\/?a\b|nao se aplica|não se aplica|pool/i;
+
+/**
+ * Nome de locatário sujo, com marcação de anotação no meio.
+ *
+ * A planilha real traz coisas como "*** CONTRATO DE 60 MESES *** LARISSA" —
+ * o nome vem truncado depois do aviso. Importar assim gera um cadastro com
+ * nome pela metade, que depois não casa com nada no extrato.
+ */
+const NOME_POLUIDO = /\*{2,}/;
+
 /** Texto que indica contrato encerrado numa coluna de situação. */
-const ENCERRADO = /encerrad|inativ|rescindid|desativad|finalizad|sa[íi]u/;
+const ENCERRADO = /encerrad|inativ|rescindid|desativad|finalizad|sa[íi]u|vago|vaga/;
 
 function texto(v: unknown): string {
   if (v === null || v === undefined) return "";
@@ -105,7 +128,12 @@ export function dataParaISO(v: unknown): string | null {
   const t = texto(v);
   if (!t) return null;
 
-  const br = t.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})$/);
+  // Uma célula intencionalmente sem prazo não é data ilegível.
+  if (SEM_PRAZO.test(t)) return null;
+
+  // A data pode vir com anotação colada: "26/03/2020 (Aditivo)". Procurar em
+  // vez de exigir a linha inteira é o que salva essas células.
+  const br = t.match(/(?:^|\s)(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})(?:\s|$|\D)/);
   if (br) {
     const [, d, m, a] = br;
     // Dois dígitos no ano: 24 é 2024, não 1924. Contrato de locação com
@@ -138,6 +166,7 @@ export function mesDeReajuste(v: unknown): number | null {
 
   const t = normalizar(v);
   if (!t) return null;
+  if (SEM_PRAZO.test(t)) return null;
 
   const soNumero = t.match(/^(\d{1,2})$/);
   if (soNumero) {
@@ -171,6 +200,43 @@ export function documentoLimpo(v: unknown): string | null {
   const digitos = texto(v).replace(/\D/g, "");
   if (digitos.length !== 11 && digitos.length !== 14) return null;
   return digitos;
+}
+
+/**
+ * Acha o CPF ou CNPJ dentro de um texto corrido.
+ *
+ * A planilha real não tem coluna de documento: ele mora nas observações,
+ * escrito como "CNPJ: 27.252.040/0001-87 | Arrendamento 48 meses...". Sem
+ * isto o cadastro entra sem documento, e o casamento por documento — que é o
+ * mais confiável de todos — deixa de existir.
+ *
+ * Quando há mais de um (imóvel alugado para um casal), fica o primeiro e o
+ * resto continua legível nas observações.
+ */
+export function documentoNoTexto(texto: string): string | null {
+  const cnpj = texto.match(/\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/);
+  if (cnpj) return cnpj[0].replace(/\D/g, "");
+
+  const cpf = texto.match(/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/);
+  if (cpf) return cpf[0].replace(/\D/g, "");
+
+  return null;
+}
+
+/**
+ * Quebra a coluna de padrões de pagador numa lista.
+ *
+ * "HY SUITES, HY SUÍTES, URBAN HOME" vira três padrões. São os nomes como o
+ * locatário aparece no extrato — quem assina "HY Suítes e Locação de Veículos
+ * Ltda" paga como "HY SUITES", e comparar só com o nome do contrato erra
+ * justamente nesses casos.
+ */
+export function separarPadroes(v: unknown): string[] {
+  return String(v ?? "")
+    .split(/[,;|\n]/)
+    .map((p) => p.replace(/\s+/g, " ").trim())
+    .filter((p) => p.length >= 2 && p.length <= 80)
+    .slice(0, 20);
 }
 
 /**
@@ -266,6 +332,19 @@ export function lerCadastroImoveis(
       descartadas.push({ linha: numero, identificacao, motivo: "sem o nome do imóvel" });
       continue;
     }
+
+    // A situação decide antes de tudo. Dizer "sem valor de aluguel" para um
+    // imóvel marcado VAGO seria relatar o sintoma no lugar da causa — e a
+    // pessoa iria procurar um erro de leitura que não existe.
+    const situacao = normalizar(ler(linha, "status"));
+    if (situacao && ENCERRADO.test(situacao)) {
+      descartadas.push({
+        linha: numero,
+        identificacao,
+        motivo: `marcado como "${texto(ler(linha, "status"))}" na planilha`,
+      });
+      continue;
+    }
     if (!locatario || VAGO.test(normalizar(locatario))) {
       descartadas.push({
         linha: numero,
@@ -287,10 +366,8 @@ export function lerCadastroImoveis(
 
     const avisos: string[] = [];
 
-    const situacao = normalizar(ler(linha, "status"));
-    if (situacao && ENCERRADO.test(situacao)) {
-      descartadas.push({ linha: numero, identificacao, motivo: `marcado como "${texto(ler(linha, "status"))}"` });
-      continue;
+    if (NOME_POLUIDO.test(locatario)) {
+      avisos.push("o nome do locatário vem com anotação no meio; confira se está inteiro");
     }
 
     const contaBruta = texto(ler(linha, "conta"));
@@ -303,26 +380,37 @@ export function lerCadastroImoveis(
       );
     }
 
+    const fimBruto = texto(ler(linha, "fim"));
     const vigenciaFim = dataParaISO(ler(linha, "fim"));
-    if (indice.fim !== -1 && texto(ler(linha, "fim")) && !vigenciaFim) {
+    if (fimBruto && !vigenciaFim && !SEM_PRAZO.test(fimBruto)) {
       avisos.push("não entendi a data de fim da vigência");
     }
 
+    const reajusteBruto = texto(ler(linha, "reajuste"));
     const mesReajuste = mesDeReajuste(ler(linha, "reajuste"));
-    if (indice.reajuste !== -1 && texto(ler(linha, "reajuste")) && mesReajuste === null) {
+    if (reajusteBruto && mesReajuste === null && !SEM_PRAZO.test(reajusteBruto)) {
       avisos.push("não entendi o mês de reajuste");
     }
 
-    const observacoesPartes = [texto(ler(linha, "observacoes"))];
-    const condominio = valorParaCentavos(ler(linha, "condominio"));
-    const iptu = valorParaCentavos(ler(linha, "iptu"));
-    if (condominio !== null) observacoesPartes.push(`Condomínio: ${(condominio / 100).toFixed(2)}`);
-    if (iptu !== null) observacoesPartes.push(`IPTU: ${(iptu / 100).toFixed(2)}`);
+    const observacoes = texto(ler(linha, "observacoes"));
+
+    // A planilha real não tem coluna de documento: o CPF/CNPJ mora dentro das
+    // observações. Procurar ali é o que mantém vivo o casamento por documento.
+    const documento =
+      documentoLimpo(ler(linha, "documento")) ?? documentoNoTexto(observacoes);
+
+    // Padrões de pagador vêm de coluna própria. Sem eles, sobra o nome do
+    // contrato — que quase nunca é como a pessoa aparece no extrato.
+    const padroes = separarPadroes(ler(linha, "padroes"));
+    if (padroes.length === 0) padroes.push(locatario);
+
+    const condominioCentavos = valorParaCentavos(ler(linha, "condominio"));
+    const iptuCentavos = valorParaCentavos(ler(linha, "iptu"));
 
     contratos.push({
       imovel,
       locatario,
-      documento: documentoLimpo(ler(linha, "documento")),
+      documento,
       valorCentavos,
       diaVencimento: diaDeVencimento(ler(linha, "vencimento")),
       indiceReajuste: texto(ler(linha, "indice")) || null,
@@ -332,7 +420,10 @@ export function lerCadastroImoveis(
       tipoImovel: texto(ler(linha, "tipo")) || null,
       garantia: texto(ler(linha, "garantia")) || null,
       contaApelido,
-      observacoes: observacoesPartes.filter(Boolean).join(" · ") || null,
+      condominioCentavos,
+      iptuCentavos,
+      padroes,
+      observacoes: observacoes || null,
       linha: numero,
       avisos,
     });

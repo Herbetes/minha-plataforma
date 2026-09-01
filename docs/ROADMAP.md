@@ -38,6 +38,37 @@ número de cláusula. O que ela não faz é sinônimo: perguntar "correção mon
 não acha "reajuste". Se isso incomodar na prática, a busca semântica entra como
 melhoria, sem refazer nada.
 
+### A lição mais cara: código escrito sem o documento real
+
+O leitor de extrato em PDF foi escrito com base numa suposição de layout, e a
+suposição estava errada. Contra os extratos de verdade ele leu **zero
+lançamentos** na conta PJ e, nas duas PF, leu as colunas erradas — devolvia o
+número do lote do banco no lugar do histórico e perdia o sinal de débito.
+
+Pior: passava nos testes. Os testes tinham sido escritos contra a mesma
+suposição errada, então confirmavam o engano em vez de pegá-lo.
+
+O que o documento real mostrou:
+
+- O BB emite o extrato em **dois arranjos de coluna**. No PJ o cabeçalho é
+  `Dia Lote Documento Histórico Valor` e o extrator joga o valor na linha
+  ANTERIOR à data; no PF é `Dia Documento ValorLote Histórico` e os dois vêm
+  juntos. Mesmo banco, mesmo mês, formatos diferentes.
+- O pagador — inclusive o **CPF/CNPJ dele** — está nas linhas de continuação
+  do histórico, não na linha do lançamento.
+- O que parecia "o documento" era o número sequencial do banco, que casaria
+  com qualquer coisa.
+
+Depois da correção, os três extratos fecham no centavo: saldo inicial mais a
+soma dos lançamentos dá exatamente o saldo final, em 152 lançamentos, zero
+linhas ignoradas. Essa conferência de saldo é a prova que nenhum teste com
+dado inventado conseguiria dar.
+
+**Regra que fica:** para leitor de documento de terceiro, teste com dado
+inventado prova apenas que o código faz o que eu achei que ele deveria fazer.
+Peça o documento real antes de escrever o leitor — ou, no mínimo, antes de
+confiar nele.
+
 ### O que a trilha não previa e apareceu
 
 Nenhum dos problemas que custaram tempo estava no código. Todos vieram de

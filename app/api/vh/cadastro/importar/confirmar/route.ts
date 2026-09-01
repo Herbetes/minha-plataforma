@@ -19,7 +19,10 @@ const linhaSchema = z.object({
   tipoImovel: z.string().trim().max(40).nullable().optional(),
   garantia: z.string().trim().max(200).nullable().optional(),
   contaApelido: z.string().trim().max(40).nullable().optional(),
-  observacoes: z.string().trim().max(1000).nullable().optional(),
+  condominioCentavos: z.number().int().nonnegative().nullable().optional(),
+  iptuCentavos: z.number().int().nonnegative().nullable().optional(),
+  padroes: z.array(z.string().trim().min(2).max(80)).max(20).optional(),
+  observacoes: z.string().trim().max(2000).nullable().optional(),
 });
 
 const corpoSchema = z.object({
@@ -78,9 +81,11 @@ export async function POST(request: Request) {
       ativo: true,
       observacoes: c.observacoes || null,
       account_id: c.contaApelido ? (idPorApelido.get(normalizar(c.contaApelido)) ?? null) : null,
-      // O nome do locatário entra como primeiro padrão de pagador: é o palpite
-      // certo na maioria dos casos e economiza uma edição por contrato.
-      padroes: [c.locatario],
+      // Os padrões vêm da coluna própria da planilha; sem ela, sobra o nome do
+      // locatário, que é o palpite razoável.
+      padroes: c.padroes?.length ? c.padroes : [c.locatario],
+      condominio_centavos: c.condominioCentavos ?? null,
+      iptu_centavos: c.iptuCentavos ?? null,
       tipo_imovel: c.tipoImovel || null,
       garantia: c.garantia || null,
     });

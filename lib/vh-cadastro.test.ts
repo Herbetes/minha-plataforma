@@ -193,11 +193,87 @@ describe("lerCadastroImoveis", () => {
   it("avisa quando a data de vigência está ilegível, mas não perde o contrato", () => {
     const r = lerCadastroImoveis([
       ["IMÓVEL", "LOCATÁRIO", "ALUGUEL", "VIGÊNCIA"],
-      ["FLAT 900", "Maria", 1000, "indeterminado"],
+      ["FLAT 900", "Maria", 1000, "a combinar"],
     ]);
     expect(r.contratos).toHaveLength(1);
     expect(r.contratos[0].vigenciaFim).toBeNull();
     expect(r.contratos[0].avisos.join(" ")).toContain("fim da vigência");
+  });
+
+  it("'INDETERMINADO' é resposta, não erro — não vira aviso", () => {
+    const r = lerCadastroImoveis([
+      ["IMÓVEL", "LOCATÁRIO", "ALUGUEL", "FIM CONTRATO"],
+      ["FLAT 900", "Maria", 1000, "INDETERMINADO (venceu Mar/2024)"],
+    ]);
+    expect(r.contratos[0].vigenciaFim).toBeNull();
+    expect(r.contratos[0].avisos).toEqual([]);
+  });
+
+  it("'N/A - Pool' no reajuste também é resposta, não erro", () => {
+    const r = lerCadastroImoveis([
+      ["IMÓVEL", "LOCATÁRIO", "ALUGUEL", "MÊS REAJUSTE"],
+      ["FLAT 2605", "MAI Administradora", 1598.62, "N/A - Pool"],
+    ]);
+    expect(r.contratos[0].mesReajuste).toBeNull();
+    expect(r.contratos[0].avisos).toEqual([]);
+  });
+
+  it("lê a data grudada numa anotação: '26/03/2020 (Aditivo)'", () => {
+    const r = lerCadastroImoveis([
+      ["IMÓVEL", "LOCATÁRIO", "ALUGUEL", "INÍCIO CONTRATO"],
+      ["FLAT 900", "Maria", 1000, "26/03/2020 (Aditivo)"],
+    ]);
+    expect(r.contratos[0].vigenciaInicio).toBe("2020-03-26");
+  });
+
+  it("avisa quando o nome do locatário vem com anotação no meio", () => {
+    const r = lerCadastroImoveis([
+      ["IMÓVEL", "LOCATÁRIO", "ALUGUEL"],
+      ["SALA 804", "*** CONTRATO DE 60 MESES ***     LARISSA", 5990],
+    ]);
+    expect(r.contratos[0].avisos.join(" ")).toContain("anotação no meio");
+  });
+
+  it("descarta o imóvel marcado VAGO dizendo que é a situação, não erro de leitura", () => {
+    const r = lerCadastroImoveis([
+      ["IMÓVEL", "LOCATÁRIO", "ALUGUEL", "STATUS"],
+      ["SALA 1802", "Lorena", null, "VAGO"],
+    ]);
+    expect(r.contratos).toHaveLength(0);
+    expect(r.descartadas[0].motivo).toContain("VAGO");
+    expect(r.descartadas[0].motivo).not.toContain("mesclada");
+  });
+
+  it("lê os padrões de pagador, que é o que faz o extrato casar", () => {
+    const r = lerCadastroImoveis([
+      ["IMÓVEL", "LOCATÁRIO", "ALUGUEL", "PADRÕES MATCHING (EXTRATO)"],
+      ["FLAT 602", "HY Suítes Ltda", 3850, "HY SUITES, HY SUÍTES, URBAN HOME"],
+    ]);
+    expect(r.contratos[0].padroes).toEqual(["HY SUITES", "HY SUÍTES", "URBAN HOME"]);
+  });
+
+  it("sem coluna de padrões, usa o nome do locatário como ponto de partida", () => {
+    const r = lerCadastroImoveis([
+      ["IMÓVEL", "LOCATÁRIO", "ALUGUEL"],
+      ["FLAT 900", "Maria Souza", 1000],
+    ]);
+    expect(r.contratos[0].padroes).toEqual(["Maria Souza"]);
+  });
+
+  it("acha o CNPJ dentro das observações, onde a planilha real o guarda", () => {
+    const r = lerCadastroImoveis([
+      ["IMÓVEL", "LOCATÁRIO", "ALUGUEL", "OBSERVAÇÕES"],
+      ["FLAT 602", "HY Suítes", 3850, "CNPJ: 27.252.040/0001-87 | Arrendamento 48 meses."],
+    ]);
+    expect(r.contratos[0].documento).toBe("27252040000187");
+  });
+
+  it("acha o CPF dentro das observações", () => {
+    const r = lerCadastroImoveis([
+      ["IMÓVEL", "LOCATÁRIO", "ALUGUEL", "OBSERVAÇÕES"],
+      ["APTO 701", "Maria Cristina", 6570, "CPF: 992.253.441-04 | 24 meses."],
+    ]);
+    expect(r.contratos[0].documento).toBe("99225344104");
   });
 
   it("descarta contrato marcado como encerrado", () => {
@@ -209,13 +285,13 @@ describe("lerCadastroImoveis", () => {
     expect(r.descartadas[0].motivo).toContain("Encerrado");
   });
 
-  it("guarda condomínio e IPTU nas observações, que é onde cabem hoje", () => {
+  it("guarda condomínio e IPTU em campos próprios, não no texto livre", () => {
     const r = lerCadastroImoveis([
       ["IMÓVEL", "LOCATÁRIO", "ALUGUEL", "CONDOMÍNIO", "IPTU"],
       ["FLAT 900", "Maria", 1000, 420, 95],
     ]);
-    expect(r.contratos[0].observacoes).toContain("420.00");
-    expect(r.contratos[0].observacoes).toContain("95.00");
+    expect(r.contratos[0].condominioCentavos).toBe(42_000);
+    expect(r.contratos[0].iptuCentavos).toBe(9_500);
   });
 
   it("diz quais campos não achou, para a tela poder avisar", () => {
