@@ -18,6 +18,9 @@ Três serviços conversando entre si. Todos têm plano gratuito que dá conta.
 | **Supabase** | Guarda as conversas e cuida do login | O arquivo e a portaria |
 | **Vercel** | Deixa o site no ar num endereço | O terreno e o endereço |
 
+(Mais tarde entra um quarto, o **Resend**, mas só quando você ligar o Radar —
+o módulo que manda e-mail. Ignore por enquanto.)
+
 Você vai criar conta nos três e depois **colar três senhas** (chamadas de
 "chaves") num lugar só, para eles se reconhecerem.
 
@@ -308,17 +311,73 @@ As tabelas do VH já vêm no `schema-completo.sql`. Se você rodou aquele arquiv
 está tudo pronto — vá direto para o site, aba **VH**:
 
 **1. Cadastro** (link no topo da tela) → cadastre as **contas** que recebem
-aluguel, marcando quais são de pessoa física. Depois os **contratos**, cada um
-apontando para a sua conta.
+aluguel, marcando quais são de pessoa física.
 
-**2. Abrir mês** → escolha o mês e clique em Abrir.
+**2. Contratos — não digite tudo à mão.** Na aba **Contratos** há o bloco
+*Importar da planilha da VH*: envie o **Movimento Contábil da VH** e a
+plataforma lê a aba `CADASTRO DE IMÓVEIS` sozinha.
 
-**3. Jogue os arquivos** — todos de uma vez: os extratos em PDF, CSV ou OFX e a
+Ela mostra o que entendeu **antes** de gravar: imóvel, locatário, aluguel, dia
+de vencimento, mês e índice de reajuste, vigência e conta. Você desmarca o que
+não quiser e clica em *Importar*.
+
+Três coisas que valem saber:
+
+- **Linhas que não vieram aparecem listadas, com o motivo.** Imóvel vago,
+  contrato encerrado, célula de valor mesclada (a SALA 1802 é assim). Nada é
+  descartado em silêncio.
+- **Onde ficou dúvida, aparece um ⚠ na linha** — uma conta que não bateu com as
+  que você cadastrou, uma data que não deu para ler. O contrato entra assim
+  mesmo; você corrige no formulário depois.
+- **Reimportar não duplica.** Imóvel que já está cadastrado é pulado, nunca
+  sobrescrito — inclusive se você tiver corrigido algo à mão aqui.
+
+Cadastre as contas **antes** de importar: é assim que o "H" da planilha vira a
+conta "Herbetes" sozinho. Sem isso funciona igual, só entra sem conta.
+
+Se preferir, o formulário logo abaixo continua ali para cadastrar um contrato de
+cada vez.
+
+**Depois de importar, confira e corrija pelo botão `Editar`** de cada contrato.
+Vale a pena olhar dois campos em especial:
+
+- **Aluguel mensal** — se a planilha tiver guardado ali o total recebido no mês
+  em vez do valor mensal, o Radar vai acusar inadimplência todo mês.
+- **Apelidos do imóvel** — é o campo que faz a planilha de despesas casar. A
+  `SALA 710 - EMPRESARIAL IBC` chega na planilha da Fabiana como
+  *"CONDOMÍNIO INTER BUSINESS CENTER"*: são o mesmo prédio, mas não têm uma
+  palavra em comum. Escreva `INTER BUSINESS CENTER` no campo de apelidos e ela
+  passa a casar sozinha.
+
+> **Apelido é diferente de padrão de extrato.** O *padrão* é como o **pagador**
+> aparece no banco (`HY SUITES`); o *apelido* é como o **imóvel** aparece na
+> planilha de despesas (`INTER BUSINESS CENTER`). São duas planilhas
+> diferentes, com dois vocabulários diferentes.
+
+Como o cadastro ganhou campos novos, **rode o `schema-completo.sql` de novo**
+antes de usar essa tela (é seguro, não apaga nada).
+
+**3. Abrir mês** → escolha o mês e clique em Abrir.
+
+**4. Jogue os arquivos** — todos de uma vez: os extratos em PDF, CSV ou OFX e a
 planilha de condomínios. Cada arquivo é reconhecido pelo conteúdo, e o extrato
 diz sozinho de que conta é.
 
-**4. Conciliar** → o agente propõe. **Revisar** → você aprova ou corrige.
+**5. Conciliar** → o agente propõe. **Revisar** → você aprova ou corrige.
 **Gerar conferência** → sai o relatório. **Fechar mês** → congela os números.
+
+**6. Baixar repasse para a skill** → o arquivo que leva o mês aprovado para a
+skill escrever a aba no `MOVIMENTO VH`.
+
+A plataforma **não escreve** dentro da sua planilha, e isso é de propósito: as
+células mescladas, as alturas e a configuração de página são preservadas pela
+skill, que já faz isso bem. Dois programas escrevendo o mesmo arquivo por
+bibliotecas diferentes é receita para perder formatação sem ninguém perceber.
+
+Então: salve o repasse na pasta do mês, ao lado dos extratos, e peça à skill
+para fechar o mês normalmente. O formato está em
+[`docs/VH-REPASSE.md`](docs/VH-REPASSE.md) — inclusive o trecho a acrescentar na
+skill para ela reconhecer o arquivo.
 
 A tela inicial do VH é a lista dos meses, com receita e variação. Nada se perde
 de um mês para o outro — os arquivos que entraram e os que saíram ficam
@@ -326,11 +385,108 @@ guardados no próprio mês.
 
 ---
 
+## Módulo Radar (opcional) — a automação que trabalha sem você
+
+Até aqui, nada acontece se você não abrir o site. O Radar inverte isso: toda
+segunda-feira de manhã ele olha os seus contratos sozinho e, **só se houver algo
+que mereça a sua atenção**, manda um e-mail. Semana calma não gera e-mail — aviso
+que chega vazio toda semana ensina a gente a ignorar o remetente.
+
+O que ele procura:
+
+- **Contrato vencendo** nos próximos 60 dias (ou já vencido e ainda marcado como ativo)
+- **Reajuste** neste mês ou no mês que vem
+- **Aluguel que não caiu**, contando 3 dias de folga depois do vencimento
+- **Mês passado ainda não fechado**
+
+### 1. Rodar o schema de novo (2 min)
+
+O Radar tem tabelas novas. Abra o `supabase/schema-completo.sql` no GitHub, use o
+botão **Copy raw file**, cole no **SQL Editor** do Supabase e execute. Rodar de
+novo é seguro: nada do que já existe é apagado.
+
+### 2. Criar a conta de envio de e-mail (5 min)
+
+1. Entre em **resend.com** e crie a conta (o plano gratuito manda 3.000 e-mails por mês).
+2. No menu, **API Keys** → **Create API Key** → copie a chave (começa com `re_`).
+
+> Se você já tinha configurado o Resend para o login do Supabase, **é a mesma
+> conta** — pode criar uma segunda chave ou reaproveitar a que já tem.
+
+Para o e-mail sair com um endereço seu (`radar@seudominio.com.br`), o Resend
+pede que você verifique o domínio em **Domains**. Enquanto não fizer isso, dá para
+testar com o remetente de testes que já vem configurado.
+
+### 3. Pegar a chave de serviço do Supabase (2 min)
+
+⚠️ **Atenção, esta é diferente de todas as outras.**
+
+Até agora eu disse: *"se o nome tem `secret` ou `service_role`, passa reto."* Essa
+regra continua valendo em todo lugar — **menos aqui**, e por um motivo específico.
+
+Essa chave enxerga o banco inteiro, ignorando a proteção que separa um usuário do
+outro. O Radar precisa dela porque roda de madrugada, sem ninguém logado: não
+existe sessão para o banco conferir. Ela vai para uma variável **sem** o prefixo
+`NEXT_PUBLIC_`, e é justamente esse detalhe que impede a chave de ser embutida no
+site e lida por qualquer visitante.
+
+Onde pegar: **Supabase → Project Settings → API Keys** → a chave marcada como
+`service_role` / `secret` → **Reveal** → copiar.
+
+**Não cole essa chave em conversa nenhuma, nem comigo.** Ela vai direto do
+Supabase para a Vercel.
+
+### 4. Guardar as chaves na Vercel (5 min)
+
+**Vercel → seu projeto → Settings → Environment Variables.** Crie quatro:
+
+| Name | Value |
+|---|---|
+| `SUPABASE_SERVICE_ROLE_KEY` | a chave do passo 3 |
+| `RESEND_API_KEY` | a chave `re_...` do passo 2 |
+| `CRON_SECRET` | invente uma senha longa e aleatória (30+ caracteres embaralhados). Ela não é para você digitar — é o que impede um estranho de disparar os e-mails |
+| `RADAR_REMETENTE` | `Radar VH <onboarding@resend.dev>` enquanto não verificar o domínio |
+
+Marque as três caixas (Production, Preview, Development) em cada uma.
+
+### 5. Publicar (2 min)
+
+**Deployments → Create Deployment → escreva `main` → confirmar.**
+
+Lembre: **`Redeploy` republica o commit antigo.** Depois de subir, confira em
+`SEU-ENDERECO/api/versao` se o commit bate com o topo da `main` no GitHub.
+
+### 6. Ligar e testar (3 min)
+
+Abra o site e clique na aba **Radar**. Você vai ver três blocos:
+
+- **Aviso semanal por e-mail** — o e-mail de destino, o botão **Ligar** e o botão
+  **Enviar agora (teste)**
+- **Agora** — os alertas do momento, em vermelho (crítico) e âmbar (atenção)
+- **Execuções** — o histórico, que registra **até as vezes em que não enviou nada**
+
+Confira o e-mail, clique em **Ligar** e depois em **Enviar agora (teste)**. Se a
+lista "Agora" estiver vazia, o teste vai dizer *"Nada exigindo atenção — nenhum
+e-mail enviado"*: é o comportamento certo, não um defeito. Para ver o e-mail de
+verdade, cadastre um contrato com vigência terminando nos próximos 60 dias.
+
+O envio automático acontece **segunda-feira às 8h** (horário de Brasília).
+
+| Problema | O que é | Como resolver |
+|---|---|---|
+| "Resend recusou o envio (403)" | O remetente usa um domínio que não foi verificado | Volte para `onboarding@resend.dev` ou verifique o domínio em Resend → Domains |
+| A tela do Radar dá erro ao carregar | As tabelas novas não foram criadas | Refaça o passo 1 |
+| Segunda-feira passou e não chegou nada | Pode ser que não houvesse nada a avisar | Abra a aba Radar → **Execuções**. Se houver linha da segunda com "sem envio", funcionou. Se não houver linha nenhuma, confira `CRON_SECRET` na Vercel |
+| Nunca aparece linha nenhuma em Execuções | O agendamento não está ativo | Vercel → seu projeto → aba **Cron Jobs**. O agendamento só passa a existir depois de um deploy feito **com** o `vercel.json` novo |
+
+---
+
 ## Depois que estiver no ar
 
 Você não precisa mexer em código para usar. Mas se quiser entender ou evoluir:
 
-- **O que vem a seguir** está em [`docs/ROADMAP.md`](docs/ROADMAP.md) — o próximo
-  módulo é o Cofre, onde você joga um contrato em PDF e pergunta em português.
+- **O que vem a seguir** está em [`docs/ROADMAP.md`](docs/ROADMAP.md) — Chat,
+  Cofre, VH e Radar já estão no ar; o próximo é o servidor MCP, que liga a
+  plataforma ao Claude que você já usa no dia a dia.
 - **A parte técnica** está no [`README.md`](README.md) — é lá que moram as
   instruções de terminal, para o dia em que você quiser mexer no código.

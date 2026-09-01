@@ -6,6 +6,8 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatarCentavos, paraCentavos } from "@/lib/vh";
 import PortalHeader from "../../portal-header";
+import ImportarPlanilha from "./importar-planilha";
+import EditarContrato, { type ContratoEditavel } from "./editar-contrato";
 
 export type Conta = {
   id: string;
@@ -15,18 +17,7 @@ export type Conta = {
   banco: string | null;
 };
 
-export type Contrato = {
-  id: string;
-  imovel: string;
-  locatario: string;
-  documento: string | null;
-  valor_centavos: number;
-  dia_vencimento: number | null;
-  indice_reajuste: string | null;
-  account_id: string | null;
-  padroes: string[] | null;
-  ativo: boolean;
-};
+export type Contrato = ContratoEditavel;
 
 export type Proposta = {
   id: string;
@@ -81,6 +72,8 @@ export default function VhClient({
   const [resumo, setResumo] = useState<string | null>(null);
   /** Correção de contrato escolhida na tela, ainda não aprovada. */
   const [escolhas, setEscolhas] = useState<Record<string, string>>({});
+  /** Qual contrato está aberto para edição. Um por vez, de propósito. */
+  const [editando, setEditando] = useState<string | null>(null);
 
   const [novo, setNovo] = useState({
     imovel: "",
@@ -377,7 +370,9 @@ export default function VhClient({
 
         {/* ------------------------------------------------------ contratos */}
         {aba === "contratos" && (
-          <section className="mt-6">
+          <section className="mt-6 space-y-6">
+            <ImportarPlanilha contas={contasIniciais.map((c) => c.apelido)} />
+
             <form
               onSubmit={criarContrato}
               className="grid gap-3 rounded-lg border border-marca-100 bg-white p-4 sm:grid-cols-2"
@@ -459,27 +454,55 @@ export default function VhClient({
             {contratosIniciais.length > 0 && (
               <ul className="mt-4 divide-y divide-marca-100 rounded-lg border border-marca-100 bg-white">
                 {contratosIniciais.map((c) => (
-                  <li key={c.id} className="flex items-baseline justify-between gap-4 px-4 py-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-marca-900">{c.locatario}</p>
-                      <p className="mt-0.5 truncate text-xs text-marca-700/60">
-                        {c.imovel} · {formatarCentavos(Number(c.valor_centavos))}
-                        {c.dia_vencimento && ` · vence dia ${c.dia_vencimento}`}
-                        {c.indice_reajuste && ` · ${c.indice_reajuste}`}
-                        {c.account_id &&
-                          ` · ${contasIniciais.find((a) => a.id === c.account_id)?.apelido ?? "conta"}`}
-                        {c.padroes && c.padroes.length > 0 &&
-                          ` · ${c.padroes.length} padrão(ões) de extrato`}
-                      </p>
+                  <li key={c.id} className="px-4 py-3">
+                    <div className="flex items-baseline justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-marca-900">
+                          {c.locatario}
+                          {!c.ativo && (
+                            <span className="ml-2 rounded bg-marca-100 px-1.5 py-0.5 text-[10px] font-semibold text-marca-600">
+                              inativo
+                            </span>
+                          )}
+                        </p>
+                        <p className="mt-0.5 truncate text-xs text-marca-700/60">
+                          {c.imovel} · {formatarCentavos(Number(c.valor_centavos))}
+                          {c.dia_vencimento && ` · vence dia ${c.dia_vencimento}`}
+                          {c.indice_reajuste && ` · ${c.indice_reajuste}`}
+                          {c.account_id &&
+                            ` · ${contasIniciais.find((a) => a.id === c.account_id)?.apelido ?? "conta"}`}
+                          {c.padroes && c.padroes.length > 0 &&
+                            ` · ${c.padroes.length} padrão(ões) de extrato`}
+                          {c.apelidos && c.apelidos.length > 0 &&
+                            ` · ${c.apelidos.length} apelido(s)`}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setEditando(editando === c.id ? null : c.id)}
+                          className="text-xs font-medium text-marca-600 underline underline-offset-2"
+                        >
+                          {editando === c.id ? "fechar" : "Editar"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => apagarContrato(c)}
+                          disabled={ocupado === `apagar-${c.id}`}
+                          className="text-xs font-medium text-realce-600 underline underline-offset-2 disabled:opacity-50"
+                        >
+                          Apagar
+                        </button>
+                      </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => apagarContrato(c)}
-                      disabled={ocupado === `apagar-${c.id}`}
-                      className="shrink-0 text-xs font-medium text-realce-600 underline underline-offset-2 disabled:opacity-50"
-                    >
-                      Apagar
-                    </button>
+
+                    {editando === c.id && (
+                      <EditarContrato
+                        contrato={c}
+                        contas={contasIniciais}
+                        aoFechar={() => setEditando(null)}
+                      />
+                    )}
                   </li>
                 ))}
               </ul>

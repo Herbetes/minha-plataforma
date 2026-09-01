@@ -153,12 +153,13 @@ export async function POST(request: Request, { params }: Contexto) {
 
       const { data: contratos } = await supabase
         .from("contracts")
-        .select("id, imovel")
+        .select("id, imovel, apelidos")
         .eq("user_id", user.id);
 
       const cadastro = (contratos ?? []).map((c) => ({
         id: c.id as string,
         imovel: c.imovel as string,
+        apelidos: (c.apelidos ?? []) as string[],
       }));
 
       // Substitui os condomínios deste mês, para reenviar a planilha corrigida
@@ -170,35 +171,54 @@ export async function POST(request: Request, { params }: Contexto) {
         .eq("closing_id", closingId)
         .eq("tipo", "condominio");
 
-      let semImovel = 0;
-      const linhasParaGravar = condominios.map((c) => {
+      // A aba é a lista de TODOS os pagamentos do mês — condomínio dos imóveis
+      // convive com plano de saúde, curso de inglês e imóvel que não é da VH.
+      // Só vira despesa do mês a linha que casa com um imóvel do cadastro;
+      // somar o resto triplicaria a despesa de condomínio sem ninguém notar.
+      const casadas: { linha: (typeof condominios)[number]; contratoId: string }[] = [];
+      const semImovel: string[] = [];
+
+      for (const c of condominios) {
         const casado = casarImovel(c.imovel, cadastro);
-        if (!casado) semImovel++;
-        return {
+        if (casado) casadas.push({ linha: c, contratoId: casado.id });
+        else semImovel.push(c.imovel);
+      }
+
+      await supabase.from("expenses").insert(
+        casadas.map(({ linha, contratoId }) => ({
           user_id: user.id,
           closing_id: closingId,
-          contract_id: casado?.id ?? null,
+          contract_id: contratoId,
           tipo: "condominio",
-          descricao: c.imovel,
-          valor_centavos: c.valorCentavos,
+          descricao: linha.imovel,
+          valor_centavos: linha.valorCentavos,
           origem: nome,
-        };
-      });
+        })),
+      );
 
-      await supabase.from("expenses").insert(linhasParaGravar);
-
-      const total = condominios.reduce((s, c) => s + c.valorCentavos, 0);
+      const total = casadas.reduce((s, { linha }) => s + linha.valorCentavos, 0);
       await supabase
         .from("closings")
         .update({ condominio_centavos: total })
         .eq("id", closingId);
 
+      // As linhas que sobraram são listadas, não escondidas: entre elas pode
+      // haver um condomínio de imóvel novo, que precisa entrar no cadastro.
       const detalhe =
-        `${condominios.length} condomínios lidos da aba "${aba.name}"` +
-        (semImovel ? ` · ${semImovel} sem imóvel correspondente no cadastro` : "");
+        `${casadas.length} condomínio(s) casado(s) com o cadastro na aba "${aba.name}"` +
+        (semImovel.length
+          ? ` · ${semImovel.length} linha(s) fora do cadastro, não lançadas: ${semImovel.slice(0, 8).join("; ")}` +
+            (semImovel.length > 8 ? ` e mais ${semImovel.length - 8}` : "")
+          : "");
 
       await concluir("planilha", detalhe, "processado");
-      return NextResponse.json({ tipo: "planilha", condominios: condominios.length, semImovel, detalhe });
+      return NextResponse.json({
+        tipo: "planilha",
+        condominios: casadas.length,
+        semImovel: semImovel.length,
+        naoLancadas: semImovel,
+        detalhe,
+      });
     }
 
     // -------------------------------------------------------------- extrato

@@ -7,6 +7,7 @@ const ABAS = [
   { href: "/app", rotulo: "Chat" },
   { href: "/app/cofre", rotulo: "Cofre" },
   { href: "/app/vh", rotulo: "VH" },
+  { href: "/app/radar", rotulo: "Radar" },
 ];
 
 export default function PortalHeader({ email }: { email: string }) {

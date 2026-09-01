@@ -4,7 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-ARQUIVOS=(schema.sql schema-cofre.sql schema-pastas.sql schema-vh.sql schema-vh-contas.sql schema-vh-fechamento.sql)
+ARQUIVOS=(schema.sql schema-cofre.sql schema-pastas.sql schema-vh.sql schema-vh-contas.sql schema-vh-fechamento.sql schema-radar.sql)
 
 {
   cat <<'CABECALHO'

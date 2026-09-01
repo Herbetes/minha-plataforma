@@ -69,6 +69,15 @@ alter table public.contracts
 alter table public.contracts
   add column if not exists iptu_centavos bigint;
 
+-- Apelidos do IMÓVEL, para casar com a planilha de despesas.
+--
+-- É outra coisa que `padroes`: aquele guarda como o PAGADOR aparece no
+-- extrato; este guarda como o IMÓVEL aparece na planilha de pagamentos. A
+-- SALA 710 - EMPRESARIAL IBC chega lá como "CONDOMÍNIO INTER BUSINESS CENTER"
+-- — é sigla, e nenhuma comparação por palavra adivinha sigla.
+alter table public.contracts
+  add column if not exists apelidos text[] not null default '{}';
+
 create index if not exists contracts_account_idx
   on public.contracts (user_id, account_id);
 

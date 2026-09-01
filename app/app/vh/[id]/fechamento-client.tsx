@@ -306,6 +306,13 @@ export default function FechamentoClient({
           {ocupado === "relatorio" ? "Gerando..." : "Gerar conferência"}
         </button>
 
+        <a
+          href={`/api/vh/fechamentos/${fechamento.id}/exportar`}
+          className="rounded-md border border-marca-300 px-5 py-2.5 text-sm font-medium text-marca-700 transition hover:bg-marca-50"
+        >
+          Baixar repasse para a skill
+        </a>
+
         <button
           type="button"
           disabled={ocupado !== null}

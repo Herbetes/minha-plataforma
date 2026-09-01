@@ -45,6 +45,9 @@ export async function POST(request: Request) {
       observacoes: c.observacoes ?? null,
       account_id: c.contaId ?? null,
       padroes: c.padroes ?? [],
+      apelidos: c.apelidos ?? [],
+      condominio_centavos: c.condominioCentavos ?? null,
+      iptu_centavos: c.iptuCentavos ?? null,
       tipo_imovel: c.tipoImovel ?? null,
       garantia: c.garantia ?? null,
     })

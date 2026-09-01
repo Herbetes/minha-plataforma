@@ -31,6 +31,9 @@ export async function PATCH(request: Request, { params }: Contexto) {
   if (c.observacoes !== undefined) campos.observacoes = c.observacoes ?? null;
   if (c.contaId !== undefined) campos.account_id = c.contaId ?? null;
   if (c.padroes !== undefined) campos.padroes = c.padroes ?? [];
+  if (c.apelidos !== undefined) campos.apelidos = c.apelidos ?? [];
+  if (c.condominioCentavos !== undefined) campos.condominio_centavos = c.condominioCentavos ?? null;
+  if (c.iptuCentavos !== undefined) campos.iptu_centavos = c.iptuCentavos ?? null;
   if (c.tipoImovel !== undefined) campos.tipo_imovel = c.tipoImovel ?? null;
   if (c.garantia !== undefined) campos.garantia = c.garantia ?? null;
 
