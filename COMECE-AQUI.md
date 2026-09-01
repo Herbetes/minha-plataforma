@@ -347,6 +347,19 @@ diz sozinho de que conta é.
 **5. Conciliar** → o agente propõe. **Revisar** → você aprova ou corrige.
 **Gerar conferência** → sai o relatório. **Fechar mês** → congela os números.
 
+**6. Baixar repasse para a skill** → o arquivo que leva o mês aprovado para a
+skill escrever a aba no `MOVIMENTO VH`.
+
+A plataforma **não escreve** dentro da sua planilha, e isso é de propósito: as
+células mescladas, as alturas e a configuração de página são preservadas pela
+skill, que já faz isso bem. Dois programas escrevendo o mesmo arquivo por
+bibliotecas diferentes é receita para perder formatação sem ninguém perceber.
+
+Então: salve o repasse na pasta do mês, ao lado dos extratos, e peça à skill
+para fechar o mês normalmente. O formato está em
+[`docs/VH-REPASSE.md`](docs/VH-REPASSE.md) — inclusive o trecho a acrescentar na
+skill para ela reconhecer o arquivo.
+
 A tela inicial do VH é a lista dos meses, com receita e variação. Nada se perde
 de um mês para o outro — os arquivos que entraram e os que saíram ficam
 guardados no próprio mês.

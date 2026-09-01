@@ -186,6 +186,7 @@ lib/
   cofre.ts              Divisão em trechos e montagem da busca
   vh*.ts                Leitura de extrato/planilha e pontuação de candidatos
   vh-cadastro.ts        Importação da aba CADASTRO DE IMÓVEIS da planilha da VH
+  vh-repasse.ts         Pacote do mês aprovado, que a skill lê para escrever a aba
   radar.ts              Cálculo dos alertas — aritmética pura, com teste
   radar-dados.ts        Consulta ao banco e montagem dos alertas
   radar-email.ts        Assunto e corpo do e-mail, sem enviar nada
@@ -235,6 +236,13 @@ em `radar_runs` **antes** do envio, e um índice único parcial em
 `(user_id, chave) where origem = 'cron'` faz a segunda tentativa do mesmo dia
 esbarrar no banco. Gravar depois do envio seria a ordem errada: uma falha entre
 mandar e gravar mandaria o mesmo e-mail de novo.
+
+**A plataforma não escreve dentro do MOVIMENTO VH.** Ela exporta o mês
+aprovado (`lib/vh-repasse.ts`) e a skill escreve a aba. A planilha tem células
+mescladas, alturas e configuração de página que a skill já preserva; um segundo
+escritor, por outra biblioteca, perde formatação em silêncio no documento que
+vai para a contabilidade. O contrato entre os dois está em `docs/VH-REPASSE.md`
+e é versionado — a skill recusa um formato que não conhece.
 
 **O modelo escreve o resumo do Radar, não os alertas.** Os alertas saem de
 `lib/radar.ts`, que é aritmética de datas e valores com teste. O Claude recebe a

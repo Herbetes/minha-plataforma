@@ -17,7 +17,7 @@ plano; esta seção é o que de fato aconteceu.
 |---|---|---|
 | **0 — Portal** | **No ar** | Login por link mágico, chat com o Claude em streaming, histórico no Postgres. |
 | **1 — Cofre** | **No ar** | Envia PDF, pergunta em português, resposta com trechos citados. |
-| **2 — Agente VH** | **No ar** | Contas, contratos (importáveis da planilha da VH), extratos (PDF/CSV/OFX), planilha de condomínios, conciliação proposta por agente com aprovação humana e fechamento mensal. |
+| **2 — Agente VH** | **No ar** | Contas, contratos (importáveis da planilha da VH), extratos (PDF/CSV/OFX), planilha de condomínios, conciliação proposta por agente com aprovação humana, fechamento mensal e repasse do mês para a skill escrever a aba. |
 | **3 — Radar** | **No ar** | Alertas calculados por código, aviso semanal por e-mail com idempotência diária, histórico das execuções. |
 | 4 — Copiloto | não começado | |
 | 5 — Produto | não começado | |
