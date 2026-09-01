@@ -88,7 +88,17 @@ configuração de serviço, e vale registrar porque vão se repetir:
   próprio (Resend).
 - **Extensão de IA no navegador sujando o "copiar tudo".** Um `Ctrl+A` numa
   página trouxe o texto de um botão flutuante junto e quebrou o SQL. Usar o botão
-  *Copy raw file* do GitHub elimina a classe inteira de problema.
+  *Copy raw file* do GitHub reduz muito o problema, mas não o elimina: mesmo com
+  ele, já apareceu lixo grudado no FIM da cópia. Como o erro do Postgres cai na
+  última linha, parece que o arquivo inteiro está corrompido quando na verdade
+  tudo antes dela foi lido sem problema. Virou passo fixo do guia: depois de
+  colar, `Ctrl+End` e conferir a última linha.
+- **Código novo no ar antes de o SQL ser rodado.** Aconteceu duas vezes, e as
+  duas com o mesmo padrão: a tela quebra num lugar que não tem relação com a
+  causa, e a pessoa procura defeito no programa. Resolvido transformando
+  `/api/versao` num diagnóstico de verdade — ele pergunta ao banco quais tabelas
+  e colunas existem e responde, em português, quando falta rodar o schema. Antes
+  ele só devolvia um `modulos` fixo no código, que não checava nada.
 
 A lição para os próximos projetos: **reserve mais tempo para conectar serviços do
 que para escrever código.**

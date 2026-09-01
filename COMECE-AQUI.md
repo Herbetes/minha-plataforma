@@ -93,7 +93,27 @@ Guarde como: **CHAVE 1**
    > para uma linha que nem existe no arquivo. O botão *Copy raw file* copia só
    > o arquivo e resolve isso de vez.
 
-   Volte ao Supabase, **cole tudo** na caixa e clique em **Run**.
+   Volte ao Supabase e **cole tudo** na caixa.
+
+   > ### Antes de clicar em Run: confira a última linha
+   >
+   > Clique dentro da caixa e aperte **Ctrl+End**. O cursor vai para o fim de
+   > tudo. A última linha com conteúdo tem que ser exatamente esta:
+   >
+   > ```
+   >   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+   > ```
+   >
+   > **Apague qualquer coisa que venha depois disso** — em especial uma linha
+   > de `=========` solta.
+   >
+   > Por que este passo existe: mesmo usando o *Copy raw file*, às vezes vem
+   > texto grudado no fim da cópia. Como o erro aparece na ÚLTIMA linha, ele dá
+   > a impressão de que o arquivo inteiro está quebrado — quando na verdade as
+   > 838 linhas anteriores estavam perfeitas e sobrou lixo no rodapé. Conferir
+   > leva 5 segundos e já nos custou tempo duas vezes.
+
+   Agora sim: clique em **Run**.
 
    **O que você deve ver:** uma mensagem verde, tipo *Success. No rows returned*.
    Isso é sucesso — "nenhuma linha retornada" é o esperado, você criou tabelas
@@ -262,10 +282,12 @@ para mandar o e-mail semanal, então essa peça seria montada de qualquer forma.
 | Login funciona mas a conversa some no F5 | O `schema.sql` não rodou, ou rodou com erro | Refaça o passo 2.4 e veja se a mensagem foi verde |
 | No SQL Editor: `syntax error at or near "✕Merlin"` (ou outro nome de extensão) | Uma extensão de IA do navegador sujou a cópia | Limpe a caixa (Ctrl+A, Delete) e copie de novo pelo botão **Copy raw file**, nunca com Ctrl+A |
 | No SQL Editor: `relation "public.X" does not exist` | Você rodou um arquivo de schema fora de ordem | Use sempre o `schema-completo.sql`, que traz tudo na ordem certa. Rodar de novo é seguro |
-| No SQL Editor: erro apontando uma linha maior que 84 | Veio texto a mais colado no fim | Ctrl+End na caixa: a última linha tem que ser `for each row execute function public.touch_conversation();`. Apague o que vier depois |
+| No SQL Editor: `42601: operator too long at or near "======"` | Veio texto a mais colado no fim da cópia | Ctrl+End na caixa: a última linha tem que ser `for all using (auth.uid() = user_id) with check (auth.uid() = user_id);`. Apague tudo o que vier depois |
+| No SQL Editor: erro apontando a última linha do arquivo (ou uma linha maior que ele tem) | Mesma causa: lixo no rodapé da cópia | Idem acima. O erro estar na última linha é boa notícia — tudo antes dela foi lido sem problema |
 | A tela fica branca | O deploy falhou | Vercel → Deployments → clique no último → aba Logs |
 | Build falha com `No Output Directory named "public" found` | O projeto na Vercel está configurado como site estático, não como Next.js | Settings → Build and Deployment → **Framework Preset: Next.js**, e desligue o override de **Output Directory**. Depois, Redeploy |
 | O site publicado é a versão antiga | A Vercel está publicando um commit velho | Abra `SEU-ENDERECO/api/versao` — ele diz qual commit está no ar. Se não bater com o topo da `main` no GitHub, veja a linha abaixo |
+| Uma tela nova dá erro sem explicação | O código subiu mas o SQL não foi rodado | Abra `SEU-ENDERECO/api/versao`: o bloco **banco** diz, parte por parte, o que ainda falta. Se aparecer `FALTA RODAR O SQL`, é isso |
 | Uma novidade não apareceu no site | **`Redeploy` republica o MESMO commit**, não o mais recente. É a pegadinha mais comum | Deployments → **Create Deployment** → escreva `main` → confirmar. Isso publica a versão atual. Use `Redeploy` só para repetir um build que falhou por motivo passageiro |
 
 **Em qualquer caso, me traga a mensagem exata que apareceu.** Com o texto do erro
