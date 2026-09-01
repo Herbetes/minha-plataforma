@@ -145,3 +145,26 @@ describe("lerCondominios — a aba de pagamentos da Fabiana", () => {
     expect(r.condominios[0].valorCentavos).not.toBe(164_000);
   });
 });
+
+describe("casarImovel — apelidos do imóvel", () => {
+  const cadastro = [
+    { id: "ibc", imovel: "SALA 710 - EMPRESARIAL IBC", apelidos: ["INTER BUSINESS CENTER"] },
+    { id: "yone", imovel: "APTO 701 - MARIA YONE", apelidos: [] },
+  ];
+
+  it("casa pela sigla escrita por extenso, que nenhuma palavra em comum resolve", () => {
+    expect(casarImovel("CONDOMÍNIO  INTER BUSINESS CENTER", cadastro)?.id).toBe("ibc");
+  });
+
+  it("o nome original continua valendo", () => {
+    expect(casarImovel("CONDOMÍNIO SALA 710 - EMPRESARIAL IBC", cadastro)?.id).toBe("ibc");
+  });
+
+  it("apelido não afrouxa o corte: despesa alheia continua sem par", () => {
+    expect(casarImovel("BRADESCO SAÚDE", cadastro)).toBeNull();
+  });
+
+  it("cadastro sem apelidos funciona igual", () => {
+    expect(casarImovel("CONDOMÍNIO MARIA YONE", cadastro)?.id).toBe("yone");
+  });
+});

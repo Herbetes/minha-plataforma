@@ -13,7 +13,7 @@ export default async function VhPage() {
   if (!user) redirect("/login");
 
   const [contratos, propostas, contas] = await Promise.all([
-    supabase.from("contracts").select("*").eq("user_id", user.id).order("locatario"),
+    supabase.from("contracts").select("*").eq("user_id", user.id).order("imovel"),
     supabase
       .from("reconciliations")
       .select(

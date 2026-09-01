@@ -153,12 +153,13 @@ export async function POST(request: Request, { params }: Contexto) {
 
       const { data: contratos } = await supabase
         .from("contracts")
-        .select("id, imovel")
+        .select("id, imovel, apelidos")
         .eq("user_id", user.id);
 
       const cadastro = (contratos ?? []).map((c) => ({
         id: c.id as string,
         imovel: c.imovel as string,
+        apelidos: (c.apelidos ?? []) as string[],
       }));
 
       // Substitui os condomínios deste mês, para reenviar a planilha corrigida

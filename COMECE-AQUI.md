@@ -338,6 +338,25 @@ conta "Herbetes" sozinho. Sem isso funciona igual, só entra sem conta.
 Se preferir, o formulário logo abaixo continua ali para cadastrar um contrato de
 cada vez.
 
+**Depois de importar, confira e corrija pelo botão `Editar`** de cada contrato.
+Vale a pena olhar dois campos em especial:
+
+- **Aluguel mensal** — se a planilha tiver guardado ali o total recebido no mês
+  em vez do valor mensal, o Radar vai acusar inadimplência todo mês.
+- **Apelidos do imóvel** — é o campo que faz a planilha de despesas casar. A
+  `SALA 710 - EMPRESARIAL IBC` chega na planilha da Fabiana como
+  *"CONDOMÍNIO INTER BUSINESS CENTER"*: são o mesmo prédio, mas não têm uma
+  palavra em comum. Escreva `INTER BUSINESS CENTER` no campo de apelidos e ela
+  passa a casar sozinha.
+
+> **Apelido é diferente de padrão de extrato.** O *padrão* é como o **pagador**
+> aparece no banco (`HY SUITES`); o *apelido* é como o **imóvel** aparece na
+> planilha de despesas (`INTER BUSINESS CENTER`). São duas planilhas
+> diferentes, com dois vocabulários diferentes.
+
+Como o cadastro ganhou campos novos, **rode o `schema-completo.sql` de novo**
+antes de usar essa tela (é seguro, não apaga nada).
+
 **3. Abrir mês** → escolha o mês e clique em Abrir.
 
 **4. Jogue os arquivos** — todos de uma vez: os extratos em PDF, CSV ou OFX e a

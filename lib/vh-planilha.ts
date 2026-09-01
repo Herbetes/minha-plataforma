@@ -199,36 +199,49 @@ function numeroDaUnidade(palavras: string[]): string | null {
  * isso as duas salas da Lorena (1801 e 1802) se confundiriam, e o condomínio
  * de uma iria para a outra.
  */
-export function casarImovel(
+export type ImovelDoCadastro = {
+  id: string;
+  imovel: string;
+  /** Outros nomes pelos quais este imóvel aparece na planilha de despesas. */
+  apelidos?: string[] | null;
+};
+
+export function casarImovel<T extends ImovelDoCadastro>(
   nomePlanilha: string,
-  cadastro: { id: string; imovel: string }[],
-): { id: string; imovel: string } | null {
+  cadastro: T[],
+): T | null {
   const palavrasAlvo = palavrasDoImovel(nomePlanilha);
   const alvo = new Set(palavrasAlvo);
   if (alvo.size === 0) return null;
   const numeroAlvo = numeroDaUnidade(palavrasAlvo);
 
-  let melhor: { id: string; imovel: string } | null = null;
+  let melhor: T | null = null;
   let melhorScore = 0;
 
   for (const c of cadastro) {
-    const partes = palavrasDoImovel(c.imovel);
-    if (partes.length === 0) continue;
+    // O apelido vale como se fosse o nome. É a saída para sigla — "IBC" e
+    // "INTER BUSINESS CENTER" são o mesmo prédio e não têm letra em comum.
+    const nomes = [c.imovel, ...(c.apelidos ?? [])];
 
-    const numeroCadastro = numeroDaUnidade(partes);
+    for (const nome of nomes) {
+      const partes = palavrasDoImovel(nome);
+      if (partes.length === 0) continue;
 
-    // Números presentes nos dois lados e diferentes: são imóveis diferentes.
-    if (numeroAlvo && numeroCadastro && numeroAlvo !== numeroCadastro) continue;
+      const numeroCadastro = numeroDaUnidade(partes);
 
-    const comuns = partes.filter((p) => alvo.has(p)).length;
-    let score = comuns / Math.max(partes.length, alvo.size);
+      // Números presentes nos dois lados e diferentes: são imóveis diferentes.
+      if (numeroAlvo && numeroCadastro && numeroAlvo !== numeroCadastro) continue;
 
-    // O número bate: é identificação, não coincidência de palavra.
-    if (numeroAlvo && numeroAlvo === numeroCadastro) score = Math.max(score, 0.75);
+      const comuns = partes.filter((p) => alvo.has(p)).length;
+      let score = comuns / Math.max(partes.length, alvo.size);
 
-    if (score > melhorScore) {
-      melhorScore = score;
-      melhor = c;
+      // O número bate: é identificação, não coincidência de palavra.
+      if (numeroAlvo && numeroAlvo === numeroCadastro) score = Math.max(score, 0.75);
+
+      if (score > melhorScore) {
+        melhorScore = score;
+        melhor = c;
+      }
     }
   }
 

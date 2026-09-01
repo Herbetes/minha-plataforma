@@ -446,6 +446,10 @@ export const contratoSchema = z.object({
   observacoes: z.string().trim().max(1000).nullable().optional(),
   contaId: z.uuid().nullable().optional(),
   padroes: z.array(z.string().trim().min(2).max(80)).max(20).optional(),
+  /** Como o IMÓVEL aparece na planilha de despesas. Diferente de `padroes`. */
+  apelidos: z.array(z.string().trim().min(2).max(80)).max(20).optional(),
+  condominioCentavos: z.number().int().nonnegative().nullable().optional(),
+  iptuCentavos: z.number().int().nonnegative().nullable().optional(),
   tipoImovel: z.string().trim().max(40).nullable().optional(),
   garantia: z.string().trim().max(200).nullable().optional(),
 });
